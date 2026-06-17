@@ -45,7 +45,7 @@ const highscoreStorageKey = "sort-snak-fcm-cup-highscores-v1";
 const supabaseTable = "startellever_teams";
 const cupRevealDelay = 1150;
 const cupResultDelay = 1350;
-const cupRounds = ["1. runde", "2. runde", "3. runde", "4. runde", "Kvartfinale", "Semifinale", "Finale", "Superfinale"];
+const cupRounds = ["1. runde", "2. runde", "3. runde", "4. runde", "5. runde", "6. runde", "Kvartfinale", "Semifinale", "Finale", "Superfinale"];
 const opponentNames = [
   "Heden XI",
   "Ikast All Stars",
@@ -54,7 +54,9 @@ const opponentNames = [
   "Guldhornene FC",
   "Vestjysk Dream Team",
   "MCH Masters",
-  "Midtjysk Magi"
+  "Midtjysk Magi",
+  "Sort Sol XI",
+  "Heden Heroes"
 ];
 
 let state = {
@@ -508,10 +510,10 @@ function finishGame() {
       <div>
         <p class="eyebrow">Turnering</p>
         <h3 id="tournamentTitle">Din score er ${scores.total}/100</h3>
-        <p>Skriv dit navn for at spille turnering mod andre.</p>
+        <p>Skriv navn eller holdnavn for at spille turnering mod andre.</p>
       </div>
       <form id="tournamentForm" class="tournament-form">
-        <input id="tournamentName" name="name" type="text" maxlength="18" autocomplete="name" placeholder="Dit navn" required>
+        <input id="tournamentName" name="name" type="text" maxlength="18" autocomplete="name" placeholder="Navn eller holdnavn" required>
         <button class="primary-button" type="submit">
           <span aria-hidden="true">CUP</span>
           Start turnering
@@ -585,6 +587,7 @@ async function saveHighscore(name, scores, cupStats) {
     name,
     score: scores.total,
     average: scores.average,
+    best: scores.best,
     formation: state.formationName,
     cupWins: cupStats.wins,
     cupRounds: cupStats.rounds,
@@ -616,6 +619,7 @@ function compareTournamentEntries(a, b) {
     || (b.goalDiff || 0) - (a.goalDiff || 0)
     || (b.goalsFor || 0) - (a.goalsFor || 0)
     || (b.score || 0) - (a.score || 0)
+    || (b.best || 0) - (a.best || 0)
     || String(a.createdAt).localeCompare(String(b.createdAt));
 }
 
@@ -804,12 +808,11 @@ function renderTournamentHighscores(activeId = null) {
 
   highscores.forEach((entry, index) => {
     const item = document.createElement("li");
-    const hasWonCurrentCup = (entry.cupWins || 0) >= cupRounds.length;
     if (entry.id === activeId) item.className = "current";
     item.innerHTML = `
       <span>${index + 1}</span>
       <strong></strong>
-      <small>${hasWonCurrentCup ? "🏆 " : ""}${entry.cupWins || 0}/${cupRounds.length} · ${formatGoalDiff(entry.goalDiff || 0)}</small>
+      <small>${cupTrophyMarkup(entry.cupWins || 0)}${entry.cupWins || 0}/${cupRounds.length} · ${formatGoalDiff(entry.goalDiff || 0)}</small>
       <b>${entry.goalsFor || 0}-${entry.goalsAgainst || 0}</b>
     `;
     item.querySelector("strong").textContent = entry.name;
@@ -821,6 +824,13 @@ function renderTournamentHighscores(activeId = null) {
 function formatGoalDiff(goalDiff) {
   if (goalDiff > 0) return `+${goalDiff}`;
   return String(goalDiff);
+}
+
+function cupTrophyMarkup(wins) {
+  if (wins >= 10) return `<span class="cup-trophy gold" aria-label="Guldpokal">🏆</span> `;
+  if (wins >= 9) return `<span class="cup-trophy silver" aria-label="Sølvpokal">🏆</span> `;
+  if (wins >= 8) return `<span class="cup-trophy bronze" aria-label="Bronzepokal">🏆</span> `;
+  return "";
 }
 
 function createTeamFromSlots(name, formation, slots) {
@@ -852,16 +862,29 @@ function getSupabaseClient() {
 async function refreshRemoteHighscores() {
   const client = getSupabaseClient();
   if (!client) return [];
-  const { data, error } = await client
+  let { data, error } = await client
     .from(supabaseTable)
-    .select("id, player_name, team_score, average_score, formation, cup_wins, cup_rounds, goals_for, goals_against, goal_diff, won_cup, created_at")
+    .select("id, player_name, team_score, average_score, best_player_score, formation, cup_wins, cup_rounds, goals_for, goals_against, goal_diff, won_cup, created_at")
     .eq("approved", true)
     .order("cup_wins", { ascending: false })
     .order("goal_diff", { ascending: false })
     .order("goals_for", { ascending: false })
     .order("team_score", { ascending: false })
+    .order("best_player_score", { ascending: false })
     .order("created_at", { ascending: true })
     .limit(20);
+  if (error && String(error.message || "").includes("best_player_score")) {
+    ({ data, error } = await client
+      .from(supabaseTable)
+      .select("id, player_name, team_score, average_score, formation, cup_wins, cup_rounds, goals_for, goals_against, goal_diff, won_cup, created_at")
+      .eq("approved", true)
+      .order("cup_wins", { ascending: false })
+      .order("goal_diff", { ascending: false })
+      .order("goals_for", { ascending: false })
+      .order("team_score", { ascending: false })
+      .order("created_at", { ascending: true })
+      .limit(20));
+  }
   if (error) throw error;
   remoteHighscores = (data || []).map(databaseRowToHighscore);
   remoteHighscoresLoaded = true;
@@ -927,6 +950,7 @@ async function saveRemoteTeam(name, scores, cupStats) {
     player_name: name,
     team_score: scores.total,
     average_score: scores.average,
+    best_player_score: scores.best,
     formation: state.formationName,
     lineup: team.lineup.map((slot) => ({
       role: slot.role,
@@ -951,11 +975,20 @@ async function saveRemoteTeam(name, scores, cupStats) {
     won_cup: cupStats.wonCup,
     approved: true
   };
-  const { data, error } = await client
+  let { data, error } = await client
     .from(supabaseTable)
     .insert(payload)
     .select("id")
     .single();
+  if (error && String(error.message || "").includes("best_player_score")) {
+    const fallbackPayload = { ...payload };
+    delete fallbackPayload.best_player_score;
+    ({ data, error } = await client
+      .from(supabaseTable)
+      .insert(fallbackPayload)
+      .select("id")
+      .single());
+  }
   if (error) throw error;
   return data;
 }
@@ -966,6 +999,7 @@ function databaseRowToHighscore(row) {
     name: row.player_name,
     score: row.team_score,
     average: row.average_score,
+    best: row.best_player_score,
     formation: row.formation,
     cupWins: row.cup_wins,
     cupRounds: row.cup_rounds,

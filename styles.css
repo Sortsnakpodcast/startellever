@@ -970,6 +970,23 @@ button:disabled {
   font-size: 14px;
 }
 
+.cup-trophy {
+  display: inline-block;
+  margin-right: 2px;
+}
+
+.cup-trophy.bronze {
+  filter: sepia(1) saturate(1.6) hue-rotate(330deg) brightness(.82);
+}
+
+.cup-trophy.silver {
+  filter: grayscale(1) brightness(1.35);
+}
+
+.cup-trophy.gold {
+  filter: saturate(1.25) brightness(1.08);
+}
+
 .highscore-list {
   display: grid;
   gap: 6px;
