@@ -64,6 +64,7 @@ let state = {
   picked: [],
   currentSeason: null,
   lastSeasonLabel: null,
+  seasonDrawCounts: {},
   selectedPlayerId: null,
   roundSlotId: null,
   lastPlacedSlotId: null,
@@ -150,6 +151,7 @@ function resetGame(formationName, started = state.started) {
     picked: [],
     currentSeason: null,
     lastSeasonLabel: null,
+    seasonDrawCounts: {},
     selectedPlayerId: null,
     roundSlotId: null,
     lastPlacedSlotId: null,
@@ -245,10 +247,21 @@ function rollSeason() {
   const viableSeasons = seasons.filter((season) => season.players.some((player) => {
     return !isPicked(player) && compatibleSlots(player, season).length;
   }));
-  const seasonPool = viableSeasons.length ? viableSeasons : seasons;
+  const cappedViableSeasons = viableSeasons.filter((season) => (state.seasonDrawCounts[season.label] || 0) < 2);
+  const seasonPool = cappedViableSeasons.length
+    ? cappedViableSeasons
+    : viableSeasons.length
+      ? viableSeasons
+      : seasons.filter((season) => (state.seasonDrawCounts[season.label] || 0) < 2);
+  if (!seasonPool.length) {
+    els.drawTitle.textContent = "Ingen sæsoner tilbage";
+    els.drawSubtitle.textContent = "Start et nyt spil";
+    return;
+  }
   const nonRepeatPool = seasonPool.filter((season) => season.label !== state.lastSeasonLabel);
   state.currentSeason = randomItem(nonRepeatPool.length ? nonRepeatPool : seasonPool);
   state.lastSeasonLabel = state.currentSeason.label;
+  state.seasonDrawCounts[state.currentSeason.label] = (state.seasonDrawCounts[state.currentSeason.label] || 0) + 1;
   state.selectedPlayerId = null;
   state.lastPlacedSlotId = null;
   els.drawTitle.textContent = state.currentSeason.label;
@@ -1017,7 +1030,7 @@ function teamProfile(team) {
 
 function simulateMatch(userTeam, opponent, round, roundIndex) {
   const user = teamProfile(userTeam);
-  const other = teamProfile(opponent);
+  const other = applyOpponentHandicap(teamProfile(opponent), roundIndex);
   const openMatch = Math.random() < 0.18;
   const userXg = expectedGoals(user.attack, other.defense, user.midfield, other.midfield, roundIndex, openMatch);
   const opponentXg = expectedGoals(other.attack, user.defense, other.midfield, user.midfield, roundIndex, openMatch);
@@ -1036,6 +1049,16 @@ function simulateMatch(userTeam, opponent, round, roundIndex) {
   }
 
   return { round, opponent, userGoals, opponentGoals, penalties, userAdvanced };
+}
+
+function applyOpponentHandicap(profile, roundIndex) {
+  const handicap = [9, 6, 4, 2][roundIndex] || 0;
+  if (!handicap) return profile;
+  return {
+    attack: profile.attack - handicap,
+    midfield: profile.midfield - Math.round(handicap * 0.7),
+    defense: profile.defense - handicap
+  };
 }
 
 function expectedGoals(attack, defense, midfield, opponentMidfield, roundIndex, openMatch = false) {
