@@ -1,0 +1,4 @@
+window.STARTELLEVER_SUPABASE = {
+  url: "https://iksybdphraqygxpplmbc.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrc3liZHBocmFxeWd4cHBsbWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NTYyNTcsImV4cCI6MjA5NzIzMjI1N30.6m7zVoEHsnEVrIOYl9DjxNgXgeH7U3t4Am_JS203ElI"
+};

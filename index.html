@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sort Snak Startellever</title>
+    <link rel="stylesheet" href="styles.css?v=20260617-sortsnak-link">
+  </head>
+  <body>
+    <section class="start-overlay" id="startOverlay" aria-label="Start spil">
+      <div class="start-modal">
+        <div class="brand">
+          <img class="mark" src="assets/sort-snak-logo.png?v=20260615-podcast-logo" alt="Sort Snak">
+          <div>
+            <p>Sort Snak</p>
+            <h1>Startellever</h1>
+          </div>
+        </div>
+        <p class="start-intro">Byg din ultimative FCM-startellever. Vælg formation, træk en sæson fra arkivet, og vælg én spiller ad gangen. Hvor høj en score kan du få?</p>
+        <label class="control start-control">
+          <span>Formation</span>
+          <select id="startFormationSelect"></select>
+        </label>
+        <button id="startGameButton" class="primary-button start-button" type="button">
+          <span aria-hidden="true">⚄</span>
+          Start spillet og træk første sæson
+        </button>
+      </div>
+    </section>
+
+    <main class="app">
+      <section class="topbar" aria-label="Spilkontroller">
+        <div class="brand">
+          <img class="mark" src="assets/sort-snak-logo.png?v=20260615-podcast-logo" alt="Sort Snak">
+          <div>
+            <p>Sort Snak</p>
+            <h1>Startellever</h1>
+          </div>
+        </div>
+        <div class="toolbar">
+          <label class="control">
+            <span>Formation</span>
+            <select id="formationSelect"></select>
+          </label>
+          <button id="newGameButton" class="icon-button" type="button" title="Nyt spil" aria-label="Nyt spil">
+            <span aria-hidden="true">↻</span>
+          </button>
+          <button id="rollButton" class="primary-button" type="button">
+            <span aria-hidden="true">⚄</span>
+            Træk sæson
+          </button>
+        </div>
+      </section>
+
+      <section class="score-strip" aria-label="Status">
+        <div>
+          <span id="pickCount">0/11</span>
+          <small>pladser</small>
+        </div>
+        <div>
+          <span id="avgScore">--</span>
+          <small>gns. score</small>
+        </div>
+        <div>
+          <span id="bestScore">--</span>
+          <small>bedste spiller</small>
+        </div>
+        <div>
+          <span id="seasonScore">--</span>
+          <small>sæsoner</small>
+        </div>
+      </section>
+
+      <section class="game-layout">
+        <aside class="draft-panel" aria-label="Draft">
+          <button class="draw-card" id="seasonCard" type="button" aria-label="Træk næste sæson">
+            <div>
+              <p class="eyebrow">Aktuel sæson</p>
+              <h2 id="drawTitle">Klar til start</h2>
+              <p id="drawSubtitle" class="season-subtitle">00/01-25/26</p>
+            </div>
+            <span id="seasonRange" class="pill">00/01-25/26</span>
+          </button>
+          <div class="mini-pitch-card" id="miniPitchCard" hidden>
+            <div class="mini-pitch" id="miniPitch" aria-label="Mini-preview af opstilling"></div>
+          </div>
+          <div id="draftOptions" class="draft-options"></div>
+          <div id="resultPanel" class="result-panel" hidden></div>
+        </aside>
+
+        <div class="pitch-wrap">
+          <div class="pitch" id="pitch" aria-label="Valgt startellever"></div>
+        </div>
+      </section>
+    </main>
+
+    <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=20260617-sortsnak-link"></script>
+    <script src="players-data.js?v=20260617-sortsnak-link"></script>
+    <script src="app.js?v=20260617-sortsnak-link"></script>
+  </body>
+</html>
