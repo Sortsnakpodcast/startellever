@@ -695,13 +695,16 @@ async function startCupTournament(event, scores) {
     submit.innerHTML = `<span aria-hidden="true">CUP</span> Henter modstandere`;
   }
   const userTeam = createTeamFromSlots(name, state.formationName, state.slots);
+  const opponentSetup = await getCupOpponents();
   activeCup = {
     name,
     scores,
     coach,
     coachState: {},
     userTeam,
-    opponents: await getCupOpponents(),
+    opponents: opponentSetup.opponents,
+    remoteOpponentPool: opponentSetup.remoteTeams,
+    usedOpponentIds: new Set(),
     matches: [],
     nextRoundIndex: 0,
     timers: [],
@@ -733,7 +736,7 @@ function renderCupNextMatch() {
   clearCupTimers();
   const roundIndex = activeCup.nextRoundIndex;
   const round = cupRoundName(roundIndex);
-  const opponent = activeCup.opponents?.[roundIndex] || createOpponentTeam(roundIndex);
+  const opponent = opponentForCupRound(roundIndex);
   activeCup.currentOpponent = opponent;
 
   result.innerHTML = `
@@ -981,7 +984,50 @@ async function refreshRemoteHighscores() {
 async function getCupOpponents() {
   const remoteTeams = await fetchRemoteOpponentTeams().catch(() => []);
   const gradedRemoteTeams = pickProgressiveOpponents(remoteTeams, cupRounds.length);
-  return cupRounds.map((_, index) => gradedRemoteTeams[index] || createOpponentTeam(index));
+  return {
+    opponents: cupRounds.map((_, index) => gradedRemoteTeams[index] || createOpponentTeam(index)),
+    remoteTeams
+  };
+}
+
+function opponentForCupRound(roundIndex) {
+  if (!activeCup) return createOpponentTeam(roundIndex);
+  const plannedOpponent = activeCup.opponents?.[roundIndex];
+  if (plannedOpponent) {
+    rememberCupOpponent(plannedOpponent);
+    return plannedOpponent;
+  }
+
+  const remoteOpponent = pickExtraCupOpponent(roundIndex);
+  if (remoteOpponent) return remoteOpponent;
+
+  return createOpponentTeam(roundIndex);
+}
+
+function pickExtraCupOpponent(roundIndex) {
+  const pool = activeCup?.remoteOpponentPool || [];
+  if (!pool.length) return null;
+
+  const available = pool.filter((team) => !activeCup.usedOpponentIds.has(team.id || team.name));
+  if (!available.length) {
+    activeCup.usedOpponentIds.clear();
+    activeCup.matches.forEach((match) => rememberCupOpponent(match.opponent));
+  }
+
+  const reusable = pool.filter((team) => !activeCup.usedOpponentIds.has(team.id || team.name));
+  const sorted = [...(reusable.length ? reusable : pool)].sort((a, b) => opponentPower(a) - opponentPower(b));
+  const extraRound = Math.max(0, roundIndex - cupRounds.length);
+  const lowerBound = sorted.length >= 8 ? Math.floor(sorted.length * 0.50) : Math.floor(sorted.length * 0.35);
+  const start = Math.min(sorted.length - 1, lowerBound + extraRound);
+  const contenders = sorted.slice(start);
+  const opponent = randomItem(contenders.length ? contenders : sorted);
+  rememberCupOpponent(opponent);
+  return opponent;
+}
+
+function rememberCupOpponent(opponent) {
+  const key = opponent?.id || opponent?.name;
+  if (key && activeCup?.usedOpponentIds) activeCup.usedOpponentIds.add(key);
 }
 
 async function fetchRemoteOpponentTeams() {
