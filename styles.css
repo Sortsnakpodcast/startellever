@@ -1020,6 +1020,15 @@ button:disabled {
   background: rgba(17, 19, 21, .82);
 }
 
+.tournament-highscore-list li.viewable {
+  cursor: pointer;
+}
+
+.tournament-highscore-list li.viewable:hover {
+  background: rgba(29, 32, 34, .94);
+  box-shadow: inset 0 0 0 1px rgba(215, 166, 61, .24);
+}
+
 .tournament-highscore-list li.current {
   box-shadow: inset 3px 0 0 var(--gold);
 }
@@ -1049,6 +1058,118 @@ button:disabled {
   justify-self: end;
   color: var(--gold);
   font-size: 14px;
+}
+
+.tournament-highscore-list em {
+  grid-column: 2 / -1;
+  margin-top: -4px;
+  color: rgba(215, 166, 61, .88);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.lineup-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: start center;
+  padding: 18px 10px;
+  overflow: auto;
+  background: rgba(0, 0, 0, .72);
+}
+
+.lineup-modal-card {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  width: min(620px, 100%);
+  padding: 16px;
+  border: 1px solid rgba(244, 244, 241, .30);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(226, 35, 47, .18), rgba(17, 19, 21, .94) 48%),
+    rgba(17, 19, 21, .96);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, .62);
+}
+
+.lineup-modal-card .modal-close {
+  display: grid;
+}
+
+.lineup-modal-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  padding-right: 42px;
+}
+
+.lineup-modal-header h3 {
+  margin: 3px 0 0;
+  font-size: 26px;
+  line-height: 1.05;
+}
+
+.lineup-modal-header div:last-child {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.lineup-modal-header span {
+  color: var(--gold);
+  font-size: 28px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.lineup-modal-header small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.lineup-preview-pitch {
+  position: relative;
+  min-height: 430px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, .58);
+  border-radius: 8px;
+  background: repeating-linear-gradient(90deg, var(--green-dark) 0 12.5%, var(--green) 12.5% 25%);
+}
+
+.lineup-preview-pitch::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  height: 1px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, .24);
+}
+
+.lineup-preview-pitch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 90px;
+  height: 90px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, .26);
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .38) 0 3px, transparent 4px);
+}
+
+.lineup-preview-pitch .highscore-slot {
+  width: clamp(64px, 13vw, 86px);
+  min-height: 54px;
+  pointer-events: none;
 }
 
 .cup-trophy {

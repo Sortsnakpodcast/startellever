@@ -163,6 +163,7 @@ function startGame() {
 
 function resetGame(formationName, started = state.started) {
   clearCupTimers();
+  closeHighscoreTeamModal();
   activeCup = null;
   document.body.classList.remove("tournament-modal-open");
   state = {
@@ -192,11 +193,15 @@ function resetGame(formationName, started = state.started) {
 }
 
 function slotCoordinate(index) {
-  return formationLayouts[state.formationName]?.[index] || [50, 50];
+  return formationSlotCoordinate(state.formationName, index);
 }
 
 function shareSlotCoordinate(index) {
   return shareFormationLayouts[state.formationName]?.[index] || slotCoordinate(index);
+}
+
+function formationSlotCoordinate(formationName, index) {
+  return formationLayouts[formationName]?.[index] || [50, 50];
 }
 
 function renderPitch() {
@@ -604,6 +609,7 @@ function openTournamentModal() {
 }
 
 function closeTournamentModal() {
+  closeHighscoreTeamModal();
   document.querySelector(".tournament-card")?.classList.remove("in-modal");
   document.body.classList.remove("tournament-modal-open");
 }
@@ -639,6 +645,7 @@ function setHighscores(scores) {
 }
 
 async function saveHighscore(name, scores, cupStats) {
+  const team = createTeamFromSlots(name, state.formationName, state.slots);
   let entry = {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     name,
@@ -646,6 +653,7 @@ async function saveHighscore(name, scores, cupStats) {
     average: scores.average,
     best: scores.best,
     formation: state.formationName,
+    lineup: serializeLineup(team.lineup),
     cupWins: cupStats.wins,
     cupRounds: cupStats.rounds,
     goalsFor: cupStats.goalsFor,
@@ -891,6 +899,12 @@ function renderTournamentHighscores(activeId = null) {
   highscores.forEach((entry, index) => {
     const item = document.createElement("li");
     if (entry.id === activeId) item.className = "current";
+    if (entry.lineup?.length === 11) {
+      item.classList.add("viewable");
+      item.tabIndex = 0;
+      item.setAttribute("role", "button");
+      item.setAttribute("aria-label", `Se holdet for ${entry.name}`);
+    }
     item.innerHTML = `
       <span>${index + 1}</span>
       <strong></strong>
@@ -898,9 +912,93 @@ function renderTournamentHighscores(activeId = null) {
       <b>${entry.goalsFor || 0}-${entry.goalsAgainst || 0}</b>
     `;
     item.querySelector("strong").textContent = entry.name;
+    if (entry.lineup?.length === 11) {
+      const label = document.createElement("em");
+      label.textContent = "Se hold";
+      item.append(label);
+      item.addEventListener("click", () => openHighscoreTeamModal(entry));
+      item.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openHighscoreTeamModal(entry);
+        }
+      });
+    }
     list.append(item);
   });
 
+}
+
+function openHighscoreTeamModal(entry) {
+  if (!entry?.lineup?.length) return;
+  closeHighscoreTeamModal();
+  const overlay = document.createElement("div");
+  overlay.className = "lineup-modal";
+  overlay.id = "lineupModal";
+  overlay.innerHTML = `
+    <section class="lineup-modal-card" aria-labelledby="lineupModalTitle">
+      <button class="modal-close lineup-modal-close" type="button" aria-label="Luk holdvisning">×</button>
+      <div class="lineup-modal-header">
+        <div>
+          <p class="eyebrow">Highscore-hold</p>
+          <h3 id="lineupModalTitle"></h3>
+        </div>
+        <div>
+          <span>${entry.score || entry.average || "--"}/100</span>
+          <small>${entry.formation || ""}</small>
+        </div>
+      </div>
+      <div class="lineup-preview-pitch" aria-label="Gemt startellever"></div>
+    </section>
+  `;
+  overlay.querySelector("#lineupModalTitle").textContent = entry.name || "Startellever";
+  overlay.querySelector(".lineup-preview-pitch").append(renderHighscorePitch(entry));
+  overlay.querySelector(".lineup-modal-close").addEventListener("click", closeHighscoreTeamModal);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) closeHighscoreTeamModal();
+  });
+  document.body.append(overlay);
+  document.addEventListener("keydown", closeHighscoreTeamModalOnEscape);
+}
+
+function closeHighscoreTeamModalOnEscape(event) {
+  if (event.key === "Escape") closeHighscoreTeamModal();
+}
+
+function closeHighscoreTeamModal() {
+  document.querySelector("#lineupModal")?.remove();
+  document.removeEventListener("keydown", closeHighscoreTeamModalOnEscape);
+}
+
+function renderHighscorePitch(entry) {
+  const fragment = document.createDocumentFragment();
+  entry.lineup.forEach((rawSlot, index) => {
+    const slot = normalizeLineupSlot(rawSlot);
+    const [x, y] = formationSlotCoordinate(entry.formation, index);
+    const node = document.createElement("div");
+    node.className = "slot highscore-slot";
+    node.style.left = `${x}%`;
+    node.style.top = `${y}%`;
+    node.innerHTML = `
+      <span class="rating"></span>
+      <strong></strong>
+      <small></small>
+    `;
+    node.querySelector(".rating").textContent = slot.score;
+    node.querySelector("strong").textContent = slot.name;
+    node.querySelector("small").textContent = `${slot.role}${slot.season ? ` · ${slot.season}` : ""}`;
+    fragment.append(node);
+  });
+  return fragment;
+}
+
+function normalizeLineupSlot(slot) {
+  return {
+    role: slot.role || slot.player?.positions?.[0] || "",
+    name: slot.player?.name || slot.name || slot.role || "Spiller",
+    score: Number(slot.score || slot.player?.score || 0),
+    season: slot.player?.season || slot.season || ""
+  };
 }
 
 function cupRoundName(roundIndex) {
@@ -935,6 +1033,22 @@ function createTeamFromSlots(name, formation, slots) {
   };
 }
 
+function serializeLineup(lineup) {
+  return lineup.map((slot) => ({
+    role: slot.role,
+    score: slot.score,
+    player: {
+      id: slot.player.id,
+      name: slot.player.name,
+      score: slot.player.score,
+      season: slot.player.season,
+      sourceSeason: slot.player.sourceSeason,
+      positions: slot.player.positions,
+      number: slot.player.number || ""
+    }
+  }));
+}
+
 function isSupabaseReady() {
   const config = window.STARTELLEVER_SUPABASE || {};
   return Boolean(config.url && config.anonKey && window.supabase);
@@ -954,7 +1068,7 @@ async function refreshRemoteHighscores() {
   if (!client) return [];
   let { data, error } = await client
     .from(supabaseTable)
-    .select("id, player_name, team_score, average_score, best_player_score, formation, cup_wins, cup_rounds, goals_for, goals_against, goal_diff, won_cup, created_at")
+    .select("id, player_name, team_score, average_score, best_player_score, formation, lineup, cup_wins, cup_rounds, goals_for, goals_against, goal_diff, won_cup, created_at")
     .eq("approved", true)
     .order("cup_wins", { ascending: false })
     .order("goal_diff", { ascending: false })
@@ -966,7 +1080,7 @@ async function refreshRemoteHighscores() {
   if (error && String(error.message || "").includes("best_player_score")) {
     ({ data, error } = await client
       .from(supabaseTable)
-      .select("id, player_name, team_score, average_score, formation, cup_wins, cup_rounds, goals_for, goals_against, goal_diff, won_cup, created_at")
+      .select("id, player_name, team_score, average_score, formation, lineup, cup_wins, cup_rounds, goals_for, goals_against, goal_diff, won_cup, created_at")
       .eq("approved", true)
       .order("cup_wins", { ascending: false })
       .order("goal_diff", { ascending: false })
@@ -1085,18 +1199,7 @@ async function saveRemoteTeam(name, scores, cupStats) {
     average_score: scores.average,
     best_player_score: scores.best,
     formation: state.formationName,
-    lineup: team.lineup.map((slot) => ({
-      role: slot.role,
-      score: slot.score,
-      player: {
-        id: slot.player.id,
-        name: slot.player.name,
-        season: slot.player.season,
-        sourceSeason: slot.player.sourceSeason,
-        positions: slot.player.positions,
-        number: slot.player.number || ""
-      }
-    })),
+    lineup: serializeLineup(team.lineup),
     attack: Number(profile.attack.toFixed(2)),
     midfield: Number(profile.midfield.toFixed(2)),
     defense: Number(profile.defense.toFixed(2)),
@@ -1134,6 +1237,7 @@ function databaseRowToHighscore(row) {
     average: row.average_score,
     best: row.best_player_score,
     formation: row.formation,
+    lineup: Array.isArray(row.lineup) ? row.lineup : [],
     cupWins: row.cup_wins,
     cupRounds: row.cup_rounds,
     goalsFor: row.goals_for,
