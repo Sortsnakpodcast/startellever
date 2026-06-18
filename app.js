@@ -47,18 +47,6 @@ const cupRevealDelay = 1150;
 const cupResultDelay = 1350;
 const goldCupWins = 10;
 const cupRounds = ["1. runde", "2. runde", "3. runde", "4. runde", "5. runde", "6. runde", "Kvartfinale", "Semifinale", "Finale", "Superfinale"];
-const opponentNames = [
-  "Heden XI",
-  "Ikast All Stars",
-  "Ulvene United",
-  "Sort Snak Select",
-  "Guldhornene FC",
-  "Vestjysk Dream Team",
-  "MCH Masters",
-  "Midtjysk Magi",
-  "Sort Sol XI",
-  "Heden Heroes"
-];
 
 const coaches = [
   { id: "ove", period: "1999-2002", name: "Ove Pedersen", tag: "Guldgraveren", effect: "lowPlayers" },
@@ -704,6 +692,14 @@ async function startCupTournament(event, scores) {
   }
   const userTeam = createTeamFromSlots(name, state.formationName, state.slots);
   const opponentSetup = await getCupOpponents();
+  if (!opponentSetup.remoteTeams.length) {
+    result.innerHTML = `<div class="cup-summary loss"><strong>Ingen brugerhold fundet</strong><span>Prøv igen om lidt.</span></div>`;
+    if (submit) {
+      submit.disabled = false;
+      submit.innerHTML = `<span aria-hidden="true">CUP</span> Start turnering`;
+    }
+    return;
+  }
   activeCup = {
     name,
     scores,
@@ -745,13 +741,20 @@ function renderCupNextMatch() {
   const roundIndex = activeCup.nextRoundIndex;
   const round = cupRoundName(roundIndex);
   const opponent = opponentForCupRound(roundIndex);
+  if (!opponent) {
+    finishCupTournament(false);
+    return;
+  }
   activeCup.currentOpponent = opponent;
+  const matchContext = roundIndex >= goldCupWins
+    ? "Ekstra kamp · ingen trænereffekt"
+    : `${activeCup.coach.name} · ${activeCup.coach.tag}`;
 
   result.innerHTML = `
     <div class="cup-fixture">
       <span>${round}</span>
       <strong>${activeCup.name} vs. ${opponent.name}</strong>
-      <small>${activeCup.coach.name} · ${activeCup.coach.tag}</small>
+      <small>${matchContext}</small>
       <div class="cup-loading">Kampen starter...</div>
     </div>
     ${renderCupMatchList(activeCup.matches)}
@@ -763,7 +766,11 @@ function playCurrentCupMatch() {
   if (!activeCup || activeCup.finished) return;
   const roundIndex = activeCup.nextRoundIndex;
   const round = cupRoundName(roundIndex);
-  const opponent = activeCup.currentOpponent || createOpponentTeam(roundIndex);
+  const opponent = activeCup.currentOpponent || opponentForCupRound(roundIndex);
+  if (!opponent) {
+    finishCupTournament(false);
+    return;
+  }
   const match = simulateMatch(activeCup.userTeam, opponent, round, roundIndex, activeCup.coach, activeCup.coachState);
   activeCup.matches.push(match);
   activeCup.nextRoundIndex += 1;
@@ -1099,13 +1106,13 @@ async function getCupOpponents() {
   const remoteTeams = await fetchRemoteOpponentTeams().catch(() => []);
   const gradedRemoteTeams = pickProgressiveOpponents(remoteTeams, cupRounds.length);
   return {
-    opponents: cupRounds.map((_, index) => gradedRemoteTeams[index] || createOpponentTeam(index)),
+    opponents: gradedRemoteTeams,
     remoteTeams
   };
 }
 
 function opponentForCupRound(roundIndex) {
-  if (!activeCup) return createOpponentTeam(roundIndex);
+  if (!activeCup) return null;
   const plannedOpponent = activeCup.opponents?.[roundIndex];
   if (plannedOpponent) {
     rememberCupOpponent(plannedOpponent);
@@ -1115,7 +1122,7 @@ function opponentForCupRound(roundIndex) {
   const remoteOpponent = pickExtraCupOpponent(roundIndex);
   if (remoteOpponent) return remoteOpponent;
 
-  return createOpponentTeam(roundIndex);
+  return null;
 }
 
 function pickExtraCupOpponent(roundIndex) {
@@ -1164,6 +1171,7 @@ function pickProgressiveOpponents(teams, count) {
   const used = new Set();
 
   for (let roundIndex = 0; roundIndex < count; roundIndex += 1) {
+    if (used.size >= sorted.length) used.clear();
     const targetIndex = sorted.length === 1
       ? 0
       : Math.round((roundIndex / Math.max(1, count - 1)) * (sorted.length - 1));
@@ -1268,24 +1276,6 @@ function databaseRowToTeam(row) {
   };
 }
 
-function createOpponentTeam(roundIndex) {
-  const formationName = randomItem(Object.keys(formations));
-  const usedPlayers = new Set();
-  const slots = formations[formationName].map((role) => {
-    const candidates = importedPlayers
-      .filter((player) => player.positions.includes(role) && !usedPlayers.has(playerKey(player)))
-      .sort((a, b) => b.score - a.score);
-    const poolStart = Math.max(0, 20 - roundIndex * 3);
-    const poolSize = Math.max(8, 38 - roundIndex * 4);
-    const pool = candidates.slice(poolStart, poolStart + poolSize);
-    const player = randomItem(pool.length ? pool : candidates);
-    usedPlayers.add(playerKey(player));
-    return { role, player };
-  });
-
-  return createTeamFromSlots(`${opponentNames[roundIndex % opponentNames.length]}`, formationName, slots);
-}
-
 function teamStrength(team, roles, coach = null) {
   const players = team.lineup.filter((slot) => roles.includes(slot.role));
   return average(players.map((slot) => adjustedSlotScore(slot, coach)));
@@ -1366,17 +1356,19 @@ function applyMatchupCoachEffect(user, other, coach = null) {
 }
 
 function simulateMatch(userTeam, opponent, round, roundIndex, coach = null, coachState = {}) {
-  let user = teamProfile(userTeam, coach, roundIndex);
-  let other = applyOpponentHandicap(teamProfile(opponent), roundIndex);
-  ({ user, other } = applyMatchupCoachEffect(user, other, coach));
-  const openMatchChance = coach?.effect === "chaos" ? 0.34 : 0.18;
+  const activeCoach = roundIndex >= goldCupWins ? null : coach;
+  const engineRoundIndex = Math.min(roundIndex, goldCupWins - 1);
+  let user = teamProfile(userTeam, activeCoach, roundIndex);
+  let other = applyOpponentHandicap(teamProfile(opponent), engineRoundIndex);
+  ({ user, other } = applyMatchupCoachEffect(user, other, activeCoach));
+  const openMatchChance = activeCoach?.effect === "chaos" ? 0.34 : 0.18;
   const openMatch = Math.random() < openMatchChance;
-  const userXg = expectedGoals(user.attack, other.defense, user.midfield, other.midfield, roundIndex, openMatch);
-  const opponentXg = expectedGoals(other.attack, user.defense, other.midfield, user.midfield, roundIndex, openMatch);
+  const userXg = expectedGoals(user.attack, other.defense, user.midfield, other.midfield, engineRoundIndex, openMatch);
+  const opponentXg = expectedGoals(other.attack, user.defense, other.midfield, user.midfield, engineRoundIndex, openMatch);
   let userGoals = sampleGoals(userXg);
   let opponentGoals = sampleGoals(opponentXg);
   ({ userGoals, opponentGoals } = addBreakawayGoal(user, other, userGoals, opponentGoals, openMatch));
-  ({ userGoals, opponentGoals } = applyCoachResultEffect(userGoals, opponentGoals, coach, coachState));
+  ({ userGoals, opponentGoals } = applyCoachResultEffect(userGoals, opponentGoals, activeCoach, coachState));
   let penalties = "";
   let userAdvanced = userGoals > opponentGoals;
 
