@@ -907,6 +907,87 @@ button:disabled {
   letter-spacing: 0;
 }
 
+.coach-draft {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.coach-card {
+  display: grid;
+  gap: 6px;
+  min-height: 116px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 8px;
+  background: rgba(8, 9, 10, .56);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.coach-card:hover {
+  border-color: rgba(215, 166, 61, .52);
+  background: rgba(215, 166, 61, .10);
+}
+
+.coach-card.selected {
+  border-color: rgba(215, 166, 61, .88);
+  background:
+    linear-gradient(135deg, rgba(215, 166, 61, .24), rgba(8, 9, 10, .76)),
+    rgba(8, 9, 10, .68);
+  box-shadow: inset 0 0 0 1px rgba(215, 166, 61, .32);
+}
+
+.coach-card span {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.coach-card strong {
+  font-size: 17px;
+  line-height: 1.05;
+}
+
+.coach-card small {
+  align-self: end;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.coach-draft.collapsed {
+  grid-template-columns: 1fr;
+}
+
+.selected-coach-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid rgba(215, 166, 61, .42);
+  border-radius: 8px;
+  background: rgba(215, 166, 61, .10);
+}
+
+.selected-coach-summary span,
+.selected-coach-summary small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.selected-coach-summary strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tournament-board {
   display: grid;
   gap: 8px;
@@ -1521,6 +1602,26 @@ button:disabled {
 
   .tournament-card.in-modal .tournament-form .primary-button {
     width: 100%;
+  }
+
+  .coach-draft {
+    grid-template-columns: 1fr;
+  }
+
+  .coach-card {
+    min-height: 82px;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+
+  .coach-card span,
+  .coach-card small {
+    grid-column: 1 / -1;
+  }
+
+  .selected-coach-summary {
+    grid-template-columns: 1fr;
+    gap: 3px;
   }
 
   .tournament-card.in-modal .cup-share-cta div {

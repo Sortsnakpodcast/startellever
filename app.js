@@ -59,6 +59,22 @@ const opponentNames = [
   "Heden Heroes"
 ];
 
+const coaches = [
+  { id: "ove", period: "1999-2002", name: "Ove Pedersen", tag: "Guldgraveren", effect: "lowPlayers" },
+  { id: "troels", period: "2002-2003", name: "Troels Bech", tag: "Strategen", effect: "gapCloser" },
+  { id: "erik", period: "2004-2008", name: "Erik Rasmussen", tag: "All out attack", effect: "attackBoost" },
+  { id: "thomasberg-442", period: "2008-2009", name: "Thomas Thomasberg", tag: "Fantastiske 442", effect: "formation442" },
+  { id: "kuhn", period: "2009-2011", name: "Allan Kuhn", tag: "Balancemesteren", effect: "balance" },
+  { id: "glen", period: "2011-2015", name: "Glen Riddersholm", tag: "Glens drenge", effect: "eraBoost" },
+  { id: "thorup", period: "2015-2018", name: "Jess Thorup", tag: "Magiske 3-5-2", effect: "formation352" },
+  { id: "kenneth", period: "2018-2019", name: "Kenneth Andersen", tag: "Firmaets mand", effect: "damageControl" },
+  { id: "priske", period: "2019-2021", name: "Brian Priske", tag: "\"We expect more\"", effect: "earlyRounds" },
+  { id: "bo", period: "2021-2022", name: "Bo Henriksen", tag: "KAOS-bold", effect: "chaos" },
+  { id: "capellas", period: "2022-2023", name: "Albert Capellas", tag: "\"Fasten your seatbelts\"", effect: "riskReward" },
+  { id: "thomasberg-ingame", period: "2023-2025", name: "Thomas Thomasberg", tag: "Ingame management", effect: "comeback" },
+  { id: "tullberg", period: "2025-", name: "Mike Tullberg", tag: "Motivatoren", effect: "teamBoost" }
+];
+
 let state = {
   started: false,
   formationName: "4-3-3",
@@ -70,6 +86,8 @@ let state = {
   selectedPlayerId: null,
   roundSlotId: null,
   lastPlacedSlotId: null,
+  coachOptions: [],
+  selectedCoachId: null,
   complete: false
 };
 let activeCup = null;
@@ -486,6 +504,8 @@ function renderDraft() {
 
 function finishGame() {
   state.complete = true;
+  state.coachOptions = drawCoachOptions();
+  state.selectedCoachId = null;
   const scores = calculateScores();
   els.rollButton.disabled = true;
   els.rollButton.innerHTML = `<span aria-hidden="true">✓</span> Færdig`;
@@ -510,11 +530,14 @@ function finishGame() {
       <div>
         <p class="eyebrow">Turnering</p>
         <h3 id="tournamentTitle">Din score er ${scores.total}/100</h3>
-        <p>Skriv navn eller holdnavn for at spille turnering mod andre.</p>
+        <p>Vælg en træner og spil turnering mod andre. Valget af træner kan få betydning for turneringen.</p>
+      </div>
+      <div class="coach-draft" aria-label="Vælg træner til turneringen">
+        ${renderCoachCards()}
       </div>
       <form id="tournamentForm" class="tournament-form">
         <input id="tournamentName" name="name" type="text" maxlength="18" autocomplete="name" placeholder="Navn eller holdnavn" required>
-        <button class="primary-button" type="submit">
+        <button class="primary-button" type="submit" disabled>
           <span aria-hidden="true">CUP</span>
           Start turnering
         </button>
@@ -529,10 +552,43 @@ function finishGame() {
 
   document.querySelector("#downloadImageButton").addEventListener("click", downloadShareImage);
   document.querySelector("#shareImageButton").addEventListener("click", shareLineupImage);
+  document.querySelectorAll(".coach-card").forEach((button) => button.addEventListener("click", selectCoach));
   document.querySelector("#tournamentForm").addEventListener("submit", (event) => startCupTournament(event, scores));
   document.querySelector("#closeTournamentModal").addEventListener("click", closeTournamentModal);
   renderTournamentHighscores();
   renderShareCanvas(scores);
+}
+
+function drawCoachOptions() {
+  return [...coaches]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
+}
+
+function renderCoachCards() {
+  return state.coachOptions.map((coach) => `
+    <button class="coach-card" type="button" data-coach-id="${coach.id}" aria-pressed="false">
+      <span>${coach.period}</span>
+      <strong>${coach.name}</strong>
+      <small>${coach.tag}</small>
+    </button>
+  `).join("");
+}
+
+function selectCoach(event) {
+  const coachId = event.currentTarget.dataset.coachId;
+  state.selectedCoachId = coachId;
+  document.querySelectorAll(".coach-card").forEach((card) => {
+    const selected = card.dataset.coachId === coachId;
+    card.classList.toggle("selected", selected);
+    card.setAttribute("aria-pressed", String(selected));
+  });
+  const submit = document.querySelector("#tournamentForm button");
+  if (submit) submit.disabled = false;
+}
+
+function selectedCoach() {
+  return coaches.find((coach) => coach.id === state.selectedCoachId) || null;
 }
 
 function openTournamentModal() {
@@ -628,7 +684,8 @@ async function startCupTournament(event, scores) {
   const form = event.currentTarget;
   const input = form.querySelector("#tournamentName");
   const name = input.value.trim().slice(0, 18);
-  if (!name) return;
+  const coach = selectedCoach();
+  if (!name || !coach) return;
 
   const result = document.querySelector("#cupResult");
   const submit = form.querySelector("button");
@@ -640,6 +697,8 @@ async function startCupTournament(event, scores) {
   activeCup = {
     name,
     scores,
+    coach,
+    coachState: {},
     userTeam,
     opponents: await getCupOpponents(),
     matches: [],
@@ -648,9 +707,23 @@ async function startCupTournament(event, scores) {
     finished: false
   };
   form.hidden = true;
+  collapseCoachDraft(coach);
   result.innerHTML = "";
   openTournamentModal();
   renderCupNextMatch();
+}
+
+function collapseCoachDraft(coach) {
+  const coachDraft = document.querySelector(".coach-draft");
+  if (!coachDraft || !coach) return;
+  coachDraft.classList.add("collapsed");
+  coachDraft.innerHTML = `
+    <div class="selected-coach-summary">
+      <span>Valgt træner</span>
+      <strong>${coach.name}</strong>
+      <small>${coach.period} · ${coach.tag}</small>
+    </div>
+  `;
 }
 
 function renderCupNextMatch() {
@@ -666,7 +739,7 @@ function renderCupNextMatch() {
     <div class="cup-fixture">
       <span>${round}</span>
       <strong>${activeCup.name} vs. ${opponent.name}</strong>
-      <small>${activeCup.matches.length}/${cupRounds.length} sejre · næste modstander</small>
+      <small>${activeCup.coach.name} · ${activeCup.coach.tag}</small>
       <div class="cup-loading">Kampen starter...</div>
     </div>
     ${renderCupMatchList(activeCup.matches)}
@@ -679,7 +752,7 @@ function playCurrentCupMatch() {
   const roundIndex = activeCup.nextRoundIndex;
   const round = cupRounds[roundIndex];
   const opponent = activeCup.currentOpponent || createOpponentTeam(roundIndex);
-  const match = simulateMatch(activeCup.userTeam, opponent, round, roundIndex);
+  const match = simulateMatch(activeCup.userTeam, opponent, round, roundIndex, activeCup.coach, activeCup.coachState);
   activeCup.matches.push(match);
   activeCup.nextRoundIndex += 1;
 
@@ -1049,28 +1122,97 @@ function createOpponentTeam(roundIndex) {
   return createTeamFromSlots(`${opponentNames[roundIndex % opponentNames.length]}`, formationName, slots);
 }
 
-function teamStrength(team, roles) {
+function teamStrength(team, roles, coach = null) {
   const players = team.lineup.filter((slot) => roles.includes(slot.role));
-  return average(players.map((slot) => slot.score));
+  return average(players.map((slot) => adjustedSlotScore(slot, coach)));
 }
 
-function teamProfile(team) {
+function adjustedSlotScore(slot, coach = null) {
+  let score = Number(slot.score || slot.player?.score || 70);
+  if (!coach) return score;
+  if (coach.effect === "lowPlayers" && score < 83) {
+    score += 3;
+  }
+  if (coach.effect === "eraBoost" && isSeasonInRange(slot.player?.sourceSeason || slot.player?.season, 2011, 2015)) {
+    score += 5;
+  }
+  return clampNumber(score, 1, 99);
+}
+
+function isSeasonInRange(season, firstYear, lastYear) {
+  const match = String(season || "").match(/\d{4}|\d{2}/);
+  if (!match) return false;
+  const raw = Number(match[0]);
+  const year = raw < 100 ? 2000 + raw : raw;
+  return year >= firstYear && year <= lastYear;
+}
+
+function teamProfile(team, coach = null, roundIndex = 0) {
+  const profile = {
+    attack: teamStrength(team, ["ST", "LW", "RW", "AM", "LM", "RM"], coach),
+    midfield: teamStrength(team, ["DM", "CM", "AM", "LM", "RM"], coach),
+    defense: teamStrength(team, ["GK", "CB", "LB", "RB", "DM"], coach)
+  };
+  return applyCoachProfileEffect(profile, team, coach, roundIndex);
+}
+
+function applyCoachProfileEffect(profile, team, coach = null, roundIndex = 0) {
+  if (!coach) return profile;
+  const adjusted = { ...profile };
+  const boostAll = (factor) => {
+    adjusted.attack *= factor;
+    adjusted.midfield *= factor;
+    adjusted.defense *= factor;
+  };
+
+  if (coach.effect === "attackBoost") {
+    adjusted.attack *= 1.12;
+    adjusted.defense *= 0.92;
+  } else if (coach.effect === "formation442" && team.formation === "4-4-2") {
+    boostAll(1.07);
+  } else if (coach.effect === "balance") {
+    adjusted.attack *= 1.03;
+    adjusted.defense *= 1.03;
+  } else if (coach.effect === "formation352" && team.formation === "3-5-2") {
+    boostAll(1.07);
+  } else if (coach.effect === "earlyRounds" && roundIndex < 4) {
+    boostAll(1.04);
+  } else if (coach.effect === "riskReward") {
+    boostAll(0.95);
+  } else if (coach.effect === "teamBoost") {
+    boostAll(1.03);
+  }
+
+  return adjusted;
+}
+
+function applyMatchupCoachEffect(user, other, coach = null) {
+  if (!coach || coach.effect !== "gapCloser") return { user, other };
+  const userTotal = user.attack + user.midfield + user.defense;
+  const otherTotal = other.attack + other.midfield + other.defense;
+  if (otherTotal <= userTotal) return { user, other };
   return {
-    attack: teamStrength(team, ["ST", "LW", "RW", "AM", "LM", "RM"]),
-    midfield: teamStrength(team, ["DM", "CM", "AM", "LM", "RM"]),
-    defense: teamStrength(team, ["GK", "CB", "LB", "RB", "DM"])
+    user,
+    other: {
+      attack: other.attack - Math.max(0, other.attack - user.attack) * 0.20,
+      midfield: other.midfield - Math.max(0, other.midfield - user.midfield) * 0.20,
+      defense: other.defense - Math.max(0, other.defense - user.defense) * 0.20
+    }
   };
 }
 
-function simulateMatch(userTeam, opponent, round, roundIndex) {
-  const user = teamProfile(userTeam);
-  const other = applyOpponentHandicap(teamProfile(opponent), roundIndex);
-  const openMatch = Math.random() < 0.18;
+function simulateMatch(userTeam, opponent, round, roundIndex, coach = null, coachState = {}) {
+  let user = teamProfile(userTeam, coach, roundIndex);
+  let other = applyOpponentHandicap(teamProfile(opponent), roundIndex);
+  ({ user, other } = applyMatchupCoachEffect(user, other, coach));
+  const openMatchChance = coach?.effect === "chaos" ? 0.34 : 0.18;
+  const openMatch = Math.random() < openMatchChance;
   const userXg = expectedGoals(user.attack, other.defense, user.midfield, other.midfield, roundIndex, openMatch);
   const opponentXg = expectedGoals(other.attack, user.defense, other.midfield, user.midfield, roundIndex, openMatch);
   let userGoals = sampleGoals(userXg);
   let opponentGoals = sampleGoals(opponentXg);
   ({ userGoals, opponentGoals } = addBreakawayGoal(user, other, userGoals, opponentGoals, openMatch));
+  ({ userGoals, opponentGoals } = applyCoachResultEffect(userGoals, opponentGoals, coach, coachState));
   let penalties = "";
   let userAdvanced = userGoals > opponentGoals;
 
@@ -1083,6 +1225,21 @@ function simulateMatch(userTeam, opponent, round, roundIndex) {
   }
 
   return { round, opponent, userGoals, opponentGoals, penalties, userAdvanced };
+}
+
+function applyCoachResultEffect(userGoals, opponentGoals, coach = null, coachState = {}) {
+  if (!coach || userGoals >= opponentGoals) return { userGoals, opponentGoals };
+  if (coach.effect === "damageControl" && opponentGoals - userGoals >= 2 && Math.random() < 0.45) {
+    return { userGoals, opponentGoals: opponentGoals - 1 };
+  }
+  if (coach.effect === "riskReward" && Math.random() < 0.12) {
+    return { userGoals: opponentGoals, opponentGoals };
+  }
+  if (coach.effect === "comeback" && !coachState.comebackUsed && Math.random() < 0.12) {
+    coachState.comebackUsed = true;
+    return { userGoals: opponentGoals, opponentGoals };
+  }
+  return { userGoals, opponentGoals };
 }
 
 function applyOpponentHandicap(profile, roundIndex) {
