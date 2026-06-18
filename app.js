@@ -1,7 +1,7 @@
 const formations = {
-  "4-3-3": ["GK", "RB", "CB", "CB", "LB", "CM", "CM", "CM", "RW", "ST", "LW"],
   "4-2-3-1": ["GK", "RB", "CB", "CB", "LB", "DM", "DM", "AM", "RW", "ST", "LW"],
   "3-5-2": ["GK", "CB", "CB", "CB", "LM", "CM", "CM", "RM", "AM", "ST", "ST"],
+  "4-3-3": ["GK", "RB", "CB", "CB", "LB", "CM", "CM", "CM", "RW", "ST", "LW"],
   "3-4-3": ["GK", "CB", "CB", "CB", "LM", "CM", "CM", "RM", "LW", "ST", "RW"],
   "4-4-2": ["GK", "RB", "CB", "CB", "LB", "LM", "CM", "CM", "RM", "ST", "ST"]
 };
@@ -78,7 +78,7 @@ const coaches = [
 
 let state = {
   started: false,
-  formationName: "4-3-3",
+  formationName: "4-2-3-1",
   slots: [],
   picked: [],
   currentSeason: null,
