@@ -1328,18 +1328,27 @@ function clampNumber(value, min, max) {
 async function renderShareCanvas(scores) {
   const canvas = document.querySelector("#shareCanvas");
   if (!canvas) return null;
+  const perfectTeam = scores.average >= 95;
   const ctx = canvas.getContext("2d");
   const width = canvas.width;
   const height = canvas.height;
   const pitch = { x: 70, y: 275, w: 940, h: 900 };
   const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, "#241012");
+  gradient.addColorStop(0, perfectTeam ? "#2b210d" : "#241012");
   gradient.addColorStop(.45, "#151719");
-  gradient.addColorStop(1, "#0e130f");
+  gradient.addColorStop(1, perfectTeam ? "#17130a" : "#0e130f");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.fillStyle = "#f4f4f1";
+  if (perfectTeam) {
+    const glow = ctx.createRadialGradient(width / 2, 520, 90, width / 2, 520, 650);
+    glow.addColorStop(0, "rgba(215, 166, 61, .18)");
+    glow.addColorStop(1, "rgba(215, 166, 61, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  ctx.fillStyle = perfectTeam ? "#f7d46d" : "#f4f4f1";
   ctx.font = "900 64px Inter, system-ui, sans-serif";
   ctx.fillText("Startellever", 180, 116);
   ctx.fillStyle = "#a9adb2";
@@ -1357,22 +1366,38 @@ async function renderShareCanvas(scores) {
   ctx.fillText(state.formationName, 1010, 154);
   ctx.textAlign = "left";
 
-  drawSharePitch(ctx, pitch);
+  if (perfectTeam) {
+    ctx.fillStyle = "rgba(215, 166, 61, .16)";
+    roundRect(ctx, pitch.x - 16, pitch.y - 16, pitch.w + 32, pitch.h + 32, 28);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(215, 166, 61, .86)";
+    ctx.lineWidth = 5;
+    roundRect(ctx, pitch.x - 13, pitch.y - 13, pitch.w + 26, pitch.h + 26, 26);
+    ctx.stroke();
+  }
+
+  drawSharePitch(ctx, pitch, perfectTeam);
   state.slots.forEach((slot, index) => drawSharePlayer(ctx, slot, index, pitch));
 
-  ctx.fillStyle = "rgba(17, 19, 21, .88)";
+  ctx.fillStyle = perfectTeam ? "rgba(38, 29, 12, .92)" : "rgba(17, 19, 21, .88)";
   roundRect(ctx, 70, 1212, 940, 72, 18);
   ctx.fill();
+  if (perfectTeam) {
+    ctx.strokeStyle = "rgba(215, 166, 61, .62)";
+    ctx.lineWidth = 2;
+    roundRect(ctx, 70, 1212, 940, 72, 18);
+    ctx.stroke();
+  }
   ctx.fillStyle = "#f4f4f1";
   ctx.font = "800 26px Inter, system-ui, sans-serif";
-  ctx.fillText(`Gennemsnit ${scores.average} · Bedste ${scores.best} · ${scores.seasons} sæsoner`, 104, 1258);
+  ctx.fillText(`${perfectTeam ? "Perfekt hold · " : ""}Gennemsnit ${scores.average} · Bedste ${scores.best} · ${scores.seasons} sæsoner`, 104, 1258);
   ctx.fillStyle = "#a9adb2";
   ctx.font = "700 22px Inter, system-ui, sans-serif";
   ctx.fillText("#Midtjylland #Sortsnak #startellever", 104, 1310);
   return canvas;
 }
 
-function drawSharePitch(ctx, pitch) {
+function drawSharePitch(ctx, pitch, perfectTeam = false) {
   ctx.save();
   roundRect(ctx, pitch.x, pitch.y, pitch.w, pitch.h, 18);
   ctx.clip();
@@ -1380,8 +1405,8 @@ function drawSharePitch(ctx, pitch) {
     ctx.fillStyle = i % 2 ? "#3d814d" : "#235b39";
     ctx.fillRect(pitch.x + (pitch.w / 8) * i, pitch.y, pitch.w / 8, pitch.h);
   }
-  ctx.strokeStyle = "rgba(255,255,255,.70)";
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = perfectTeam ? "rgba(255, 230, 150, .88)" : "rgba(255,255,255,.70)";
+  ctx.lineWidth = perfectTeam ? 5 : 4;
   ctx.strokeRect(pitch.x + 3, pitch.y + 3, pitch.w - 6, pitch.h - 6);
   ctx.beginPath();
   ctx.moveTo(pitch.x, pitch.y + pitch.h / 2);
