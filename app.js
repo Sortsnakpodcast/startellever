@@ -45,6 +45,7 @@ const highscoreStorageKey = "sort-snak-fcm-cup-highscores-v1";
 const supabaseTable = "startellever_teams";
 const cupRevealDelay = 1150;
 const cupResultDelay = 1350;
+const goldCupWins = 10;
 const cupRounds = ["1. runde", "2. runde", "3. runde", "4. runde", "5. runde", "6. runde", "Kvartfinale", "Semifinale", "Finale", "Superfinale"];
 const opponentNames = [
   "Heden XI",
@@ -731,7 +732,7 @@ function renderCupNextMatch() {
   if (!activeCup || !result) return;
   clearCupTimers();
   const roundIndex = activeCup.nextRoundIndex;
-  const round = cupRounds[roundIndex];
+  const round = cupRoundName(roundIndex);
   const opponent = activeCup.opponents?.[roundIndex] || createOpponentTeam(roundIndex);
   activeCup.currentOpponent = opponent;
 
@@ -750,27 +751,32 @@ function renderCupNextMatch() {
 function playCurrentCupMatch() {
   if (!activeCup || activeCup.finished) return;
   const roundIndex = activeCup.nextRoundIndex;
-  const round = cupRounds[roundIndex];
+  const round = cupRoundName(roundIndex);
   const opponent = activeCup.currentOpponent || createOpponentTeam(roundIndex);
   const match = simulateMatch(activeCup.userTeam, opponent, round, roundIndex, activeCup.coach, activeCup.coachState);
   activeCup.matches.push(match);
   activeCup.nextRoundIndex += 1;
 
-  const wonTournament = match.userAdvanced && activeCup.nextRoundIndex === cupRounds.length;
+  const wonGoldCup = match.userAdvanced && activeCup.nextRoundIndex === goldCupWins;
   const eliminated = !match.userAdvanced;
-  if (eliminated || wonTournament) {
+  if (eliminated) {
     renderCupMatchResult(match, () => finishCupTournament(eliminated));
+  } else if (wonGoldCup) {
+    renderCupMatchResult(match, renderCupNextMatch, {
+      title: "Guldpokal vundet",
+      label: "Du spiller videre for rekorden"
+    });
   } else {
     renderCupMatchResult(match, renderCupNextMatch);
   }
 }
 
-function renderCupMatchResult(match, nextStep) {
+function renderCupMatchResult(match, nextStep, options = {}) {
   const result = document.querySelector("#cupResult");
   result.innerHTML = `
     <div class="cup-summary ${match.userAdvanced ? "winner" : "loss"}">
-      <strong>${match.round}: ${match.userGoals}-${match.opponentGoals}${match.penalties ? ` (${match.penalties})` : ""}</strong>
-      <span>${match.userAdvanced ? "Sejr" : "Nederlag"}</span>
+      <strong>${options.title ? `${options.title}: ` : ""}${match.round}: ${match.userGoals}-${match.opponentGoals}${match.penalties ? ` (${match.penalties})` : ""}</strong>
+      <span>${options.label || (match.userAdvanced ? "Sejr" : "Nederlag")}</span>
     </div>
     ${renderCupMatchList(activeCup.matches)}
   `;
@@ -787,7 +793,7 @@ async function finishCupTournament(eliminated) {
   result.innerHTML = `
     <div class="cup-summary ${eliminated ? "loss" : "winner"}">
       <strong>${eliminated ? `${activeCup.name} røg ud af cupturneringen` : `${activeCup.name} vandt cupturneringen`}</strong>
-      <span>${cupStats.wins}/${cupRounds.length} sejre · ${formatGoalDiff(cupStats.goalDiff)}</span>
+      <span>${formatCupWins(cupStats.wins)} · ${formatGoalDiff(cupStats.goalDiff)}</span>
     </div>
     ${renderCupMatchList(activeCup.matches)}
     <div class="cup-share-cta">
@@ -851,7 +857,7 @@ function calculateCupStats(matches) {
     goalsFor,
     goalsAgainst,
     goalDiff: goalsFor - goalsAgainst,
-    wonCup: wins === cupRounds.length
+    wonCup: wins >= goldCupWins
   };
 }
 
@@ -885,13 +891,21 @@ function renderTournamentHighscores(activeId = null) {
     item.innerHTML = `
       <span>${index + 1}</span>
       <strong></strong>
-      <small>${cupTrophyMarkup(entry.cupWins || 0)}${entry.cupWins || 0}/${cupRounds.length} · ${formatGoalDiff(entry.goalDiff || 0)}</small>
+      <small>${cupTrophyMarkup(entry.cupWins || 0)}${formatCupWins(entry.cupWins || 0)} · ${formatGoalDiff(entry.goalDiff || 0)}</small>
       <b>${entry.goalsFor || 0}-${entry.goalsAgainst || 0}</b>
     `;
     item.querySelector("strong").textContent = entry.name;
     list.append(item);
   });
 
+}
+
+function cupRoundName(roundIndex) {
+  return cupRounds[roundIndex] || `Ekstra kamp +${roundIndex - cupRounds.length + 1}`;
+}
+
+function formatCupWins(wins) {
+  return wins === 1 ? "1 sejr" : `${wins} sejre`;
 }
 
 function formatGoalDiff(goalDiff) {
