@@ -1231,14 +1231,34 @@ function simulateMatch(userTeam, opponent, round, roundIndex, coach = null, coac
   let userAdvanced = userGoals > opponentGoals;
 
   if (userGoals === opponentGoals) {
-    const penaltyEdge = (user.attack + user.defense + user.midfield) - (other.attack + other.defense + other.midfield);
-    userAdvanced = penaltyEdge + randomBetween(-18, 18) >= 0;
-    const userPens = userAdvanced ? randomItem([4, 5]) : randomItem([2, 3, 4]);
-    const opponentPens = userAdvanced ? Math.max(2, userPens - randomItem([1, 2])) : Math.min(5, userPens + randomItem([1, 2]));
-    penalties = `${userPens}-${opponentPens} str.`;
+    const lateWinner = addLateWinner(user, other, userGoals, opponentGoals);
+    userGoals = lateWinner.userGoals;
+    opponentGoals = lateWinner.opponentGoals;
+    userAdvanced = userGoals > opponentGoals;
+    if (!lateWinner.decided) {
+      const penaltyEdge = (user.attack + user.defense + user.midfield) - (other.attack + other.defense + other.midfield);
+      userAdvanced = penaltyEdge + randomBetween(-18, 18) >= 0;
+      const userPens = userAdvanced ? randomItem([4, 5]) : randomItem([2, 3, 4]);
+      const opponentPens = userAdvanced ? Math.max(2, userPens - randomItem([1, 2])) : Math.min(5, userPens + randomItem([1, 2]));
+      penalties = `${userPens}-${opponentPens} str.`;
+    }
   }
 
   return { round, opponent, userGoals, opponentGoals, penalties, userAdvanced };
+}
+
+function addLateWinner(user, other, userGoals, opponentGoals) {
+  const userStrength = user.attack + user.midfield + user.defense;
+  const opponentStrength = other.attack + other.midfield + other.defense;
+  const edge = userStrength - opponentStrength;
+  const chance = clampNumber(0.16 + Math.abs(edge) * 0.012, 0.16, 0.38);
+  if (Math.random() >= chance) {
+    return { userGoals, opponentGoals, decided: false };
+  }
+  if (edge + randomBetween(-9, 9) >= 0) {
+    return { userGoals: Math.min(5, userGoals + 1), opponentGoals, decided: true };
+  }
+  return { userGoals, opponentGoals: Math.min(5, opponentGoals + 1), decided: true };
 }
 
 function applyCoachResultEffect(userGoals, opponentGoals, coach = null, coachState = {}) {
