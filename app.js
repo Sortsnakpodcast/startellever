@@ -1247,44 +1247,32 @@ function opponentPower(team) {
 }
 
 async function saveRemoteTeam(name, scores, cupStats) {
-  const client = getSupabaseClient();
-  if (!client) return null;
   const team = createTeamFromSlots(name, state.formationName, state.slots);
-  const profile = teamProfile(team);
   const payload = {
-    player_name: name,
-    team_score: scores.total,
-    average_score: scores.average,
-    best_player_score: scores.best,
+    name,
     formation: state.formationName,
     lineup: serializeLineup(team.lineup),
-    attack: Number(profile.attack.toFixed(2)),
-    midfield: Number(profile.midfield.toFixed(2)),
-    defense: Number(profile.defense.toFixed(2)),
-    cup_wins: cupStats.wins,
-    cup_rounds: cupStats.rounds,
-    goals_for: cupStats.goalsFor,
-    goals_against: cupStats.goalsAgainst,
-    goal_diff: cupStats.goalDiff,
-    won_cup: cupStats.wonCup,
-    approved: true
+    cupStats: {
+      wins: cupStats.wins,
+      rounds: cupStats.rounds,
+      goalsFor: cupStats.goalsFor,
+      goalsAgainst: cupStats.goalsAgainst
+    }
   };
-  let { data, error } = await client
-    .from(supabaseTable)
-    .insert(payload)
-    .select("id")
-    .single();
-  if (error && String(error.message || "").includes("best_player_score")) {
-    const fallbackPayload = { ...payload };
-    delete fallbackPayload.best_player_score;
-    ({ data, error } = await client
-      .from(supabaseTable)
-      .insert(fallbackPayload)
-      .select("id")
-      .single());
+
+  const response = await fetch("/api/submit-score", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    throw new Error("Score could not be saved");
   }
-  if (error) throw error;
-  return data;
+
+  return response.json();
 }
 
 function databaseRowToHighscore(row) {
