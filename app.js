@@ -83,6 +83,7 @@ let activeCup = null;
 let supabaseClient = null;
 let remoteHighscores = [];
 let remoteHighscoresLoaded = false;
+let formationOrder = [];
 
 const els = {
   startOverlay: document.querySelector("#startOverlay"),
@@ -109,18 +110,18 @@ const els = {
 };
 
 function init() {
-  populateFormationSelect(els.formationSelect);
-  populateFormationSelect(els.startFormationSelect);
+  shuffleFormationOrder();
+  populateFormationSelects(formationOrder[0]);
 
   els.formationSelect.addEventListener("change", () => {
     if (!state.started) resetGame(els.formationSelect.value, false);
   });
   els.startFormationSelect.addEventListener("change", () => resetGame(els.startFormationSelect.value, false));
   els.startGameButton.addEventListener("click", startGame);
-  els.newGameButton.addEventListener("click", () => resetGame(state.formationName, false));
+  els.newGameButton.addEventListener("click", startNewGame);
   els.rollButton.addEventListener("click", rollSeason);
   els.seasonCard.addEventListener("click", handleSeasonCardClick);
-  resetGame(state.formationName, false);
+  resetGame(formationOrder[0], false);
 }
 
 function handleSeasonCardClick() {
@@ -135,13 +136,31 @@ function scrollToTournament() {
   openTournamentModal();
 }
 
-function populateFormationSelect(select) {
-  Object.keys(formations).forEach((name) => {
-    const option = document.createElement("option");
-    option.value = name;
-    option.textContent = name;
-    select.append(option);
+function shuffleFormationOrder() {
+  formationOrder = [...Object.keys(formations)];
+  for (let index = formationOrder.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [formationOrder[index], formationOrder[swapIndex]] = [formationOrder[swapIndex], formationOrder[index]];
+  }
+}
+
+function populateFormationSelects(selectedFormation = formationOrder[0]) {
+  [els.formationSelect, els.startFormationSelect].forEach((select) => {
+    select.innerHTML = "";
+    formationOrder.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      select.append(option);
+    });
+    select.value = selectedFormation;
   });
+}
+
+function startNewGame() {
+  shuffleFormationOrder();
+  populateFormationSelects(formationOrder[0]);
+  resetGame(formationOrder[0], false);
 }
 
 function startGame() {
@@ -290,9 +309,35 @@ function getSelectedPlayer() {
 
 function selectPlayer(playerId) {
   const player = state.currentSeason?.players.find((item) => item.id === playerId);
-  if (!player || (isPicked(player) && !isCurrentRoundPlayer(player)) || !compatibleSlots(player).length) return;
+  const slots = compatibleSlots(player);
+  if (!player || (isPicked(player) && !isCurrentRoundPlayer(player)) || !slots.length) return;
+  if (state.roundSlotId && !isCurrentRoundPlayer(player)) {
+    clearRoundPickSlot();
+  }
+  const autoSlot = automaticSlotChoice(slots);
+  if (autoSlot) {
+    pickPlayer(player.id, autoSlot.id);
+    return;
+  }
   state.selectedPlayerId = player.id;
   render();
+}
+
+function automaticSlotChoice(slots) {
+  if (slots.length === 1) return slots[0];
+  const roles = new Set(slots.map((slot) => slot.role));
+  return roles.size === 1 ? slots[0] : null;
+}
+
+function slotRoleChoices(slots) {
+  const choices = [];
+  const seenRoles = new Set();
+  slots.forEach((slot) => {
+    if (seenRoles.has(slot.role)) return;
+    seenRoles.add(slot.role);
+    choices.push(slot);
+  });
+  return choices;
 }
 
 function liftRoundPick() {
@@ -429,6 +474,8 @@ function renderDraft() {
     const card = document.createElement("article");
     const canUsePlayer = slots.length && (!alreadyPicked || isRoundPlayer);
     card.className = `player-card ${canUsePlayer ? "" : "blocked"} ${isSelected || isRoundPlayer ? "selected" : ""}`;
+    const autoSlot = automaticSlotChoice(slots);
+    const availableRoles = !alreadyPicked ? slotRoleChoices(slots).map((slot) => slot.role) : [];
     const status = alreadyPicked
       ? isRoundPlayer ? "Valgt i denne runde" : "Allerede valgt"
       : isSelected
@@ -442,7 +489,10 @@ function renderDraft() {
         <span class="player-number">${number}</span>
         <div class="player-main">
           <h3>${player.name}</h3>
-          ${status ? `<span class="player-status">${status}</span>` : ""}
+          <div class="player-meta-line">
+            ${status ? `<span class="player-status">${status}</span>` : ""}
+            ${availableRoles.map((role) => `<span class="available-role">${role}</span>`).join("")}
+          </div>
         </div>
         <strong class="player-positions">${player.positions.join("/")}</strong>
         <strong class="rating-badge ${player.score >= 91 ? "elite" : ""}">${player.score}</strong>
@@ -454,7 +504,7 @@ function renderDraft() {
     const button = document.createElement("button");
     button.className = "pick-button";
     button.type = "button";
-    button.textContent = isRoundPlayer ? "Fjern valg" : alreadyPicked ? "Valgt" : isSelected ? "Vises på banen" : slots.length ? "Vis pladser" : "Ingen ledig plads";
+    button.textContent = isRoundPlayer ? "Fjern valg" : alreadyPicked ? "Valgt" : isSelected ? "Vises på banen" : autoSlot ? "Vælg" : slots.length ? "Vis pladser" : "Ingen ledig plads";
     button.disabled = !canUsePlayer;
     button.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -476,7 +526,7 @@ function renderDraft() {
       row.append(placementLabel);
       const slotChoices = document.createElement("div");
       slotChoices.className = "slot-choices";
-      slots.forEach((slot) => {
+      slotRoleChoices(slots).forEach((slot) => {
         const slotButton = document.createElement("button");
         slotButton.className = "slot-choice-button";
         slotButton.type = "button";
