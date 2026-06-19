@@ -1180,7 +1180,7 @@ function pickExtraCupOpponent(roundIndex) {
   if (!pool.length) return null;
   const extraRound = Math.max(0, roundIndex - cupRounds.length);
 
-  if (extraRound >= 4) {
+  if (extraRound >= 3) {
     const sortedPool = [...pool].sort((a, b) => opponentPower(a) - opponentPower(b));
     const topTierSize = Math.max(1, Math.ceil(sortedPool.length * 0.10));
     const topTier = sortedPool.slice(Math.max(0, sortedPool.length - topTierSize));
@@ -1407,7 +1407,8 @@ function simulateMatch(userTeam, opponent, round, roundIndex, coach = null, coac
   const activeCoach = roundIndex >= goldCupWins ? null : coach;
   const engineRoundIndex = Math.min(roundIndex, goldCupWins - 1);
   let user = teamProfile(userTeam, activeCoach, roundIndex);
-  let other = applyOpponentHandicap(teamProfile(opponent), engineRoundIndex);
+  let other = applyLateTournamentOpponentBoost(teamProfile(opponent), roundIndex);
+  other = applyOpponentHandicap(other, engineRoundIndex);
   ({ user, other } = applyMatchupCoachEffect(user, other, activeCoach));
   const openMatchChance = activeCoach?.effect === "chaos" ? 0.34 : 0.18;
   const openMatch = Math.random() < openMatchChance;
@@ -1435,6 +1436,15 @@ function simulateMatch(userTeam, opponent, round, roundIndex, coach = null, coac
   }
 
   return { round, opponent, userGoals, opponentGoals, penalties, userAdvanced };
+}
+
+function applyLateTournamentOpponentBoost(profile, roundIndex) {
+  if (roundIndex < 13) return profile;
+  return {
+    attack: profile.attack + 2,
+    midfield: profile.midfield + 2,
+    defense: profile.defense + 2
+  };
 }
 
 function addLateWinner(user, other, userGoals, opponentGoals) {
