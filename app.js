@@ -1178,6 +1178,17 @@ function opponentForCupRound(roundIndex) {
 function pickExtraCupOpponent(roundIndex) {
   const pool = activeCup?.remoteOpponentPool || [];
   if (!pool.length) return null;
+  const extraRound = Math.max(0, roundIndex - cupRounds.length);
+
+  if (extraRound >= 4) {
+    const sortedPool = [...pool].sort((a, b) => opponentPower(a) - opponentPower(b));
+    const topTierSize = Math.max(1, Math.ceil(sortedPool.length * 0.10));
+    const topTier = sortedPool.slice(Math.max(0, sortedPool.length - topTierSize));
+    const unusedTopTier = topTier.filter((team) => !activeCup.usedOpponentIds.has(team.id || team.name));
+    const opponent = randomItem(unusedTopTier.length ? unusedTopTier : topTier);
+    rememberCupOpponent(opponent);
+    return opponent;
+  }
 
   const available = pool.filter((team) => !activeCup.usedOpponentIds.has(team.id || team.name));
   if (!available.length) {
@@ -1187,7 +1198,6 @@ function pickExtraCupOpponent(roundIndex) {
 
   const reusable = pool.filter((team) => !activeCup.usedOpponentIds.has(team.id || team.name));
   const sorted = [...(reusable.length ? reusable : pool)].sort((a, b) => opponentPower(a) - opponentPower(b));
-  const extraRound = Math.max(0, roundIndex - cupRounds.length);
   const lowerBound = sorted.length >= 8 ? Math.floor(sorted.length * 0.50) : Math.floor(sorted.length * 0.35);
   const start = Math.min(sorted.length - 1, lowerBound + extraRound);
   const contenders = sorted.slice(start);
