@@ -77,6 +77,8 @@ let state = {
   lastPlacedSlotId: null,
   coachOptions: [],
   selectedCoachId: null,
+  shareClaimCode: "",
+  shareTeamName: "",
   complete: false
 };
 let activeCup = null;
@@ -184,6 +186,8 @@ function resetGame(formationName, started = state.started) {
     selectedPlayerId: null,
     roundSlotId: null,
     lastPlacedSlotId: null,
+    shareClaimCode: "",
+    shareTeamName: "",
     complete: false
   };
   els.formationSelect.value = formationName;
@@ -705,16 +709,25 @@ async function saveHighscore(name, scores, cupStats) {
   setHighscores(highscores);
   const remoteRecord = await saveRemoteTeam(name, scores, cupStats).catch(() => null);
   if (remoteRecord?.id) {
+    state.shareClaimCode = shortClaimCode(remoteRecord.id);
+    state.shareTeamName = name;
     entry = { ...entry, id: remoteRecord.id };
     remoteHighscores = [entry, ...remoteHighscores]
       .filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index)
       .sort(compareTournamentEntries)
       .slice(0, 20);
     remoteHighscoresLoaded = true;
+    await renderShareCanvas(scores);
   } else {
     remoteHighscoresLoaded = false;
   }
   return entry;
+}
+
+function shortClaimCode(id) {
+  const hex = String(id || "").replace(/[^a-f0-9]/gi, "").slice(0, 12);
+  if (!hex) return "";
+  return BigInt(`0x${hex}`).toString(36).toUpperCase().padStart(8, "0").slice(-8);
 }
 
 function compareTournamentEntries(a, b) {
@@ -1593,7 +1606,10 @@ async function renderShareCanvas(scores) {
   ctx.fillText(`${perfectTeam ? "Perfekt hold · " : ""}Gennemsnit ${scores.average} · Bedste ${scores.best} · ${scores.seasons} sæsoner`, 104, 1258);
   ctx.fillStyle = "#a9adb2";
   ctx.font = "700 22px Inter, system-ui, sans-serif";
-  ctx.fillText("#Midtjylland #Sortsnak #startellever", 104, 1310);
+  const claimText = state.shareClaimCode
+    ? `${state.shareTeamName || "Hold"} · ID ${state.shareClaimCode}`
+    : "#Midtjylland #Sortsnak #startellever";
+  ctx.fillText(claimText, 104, 1310);
   return canvas;
 }
 
