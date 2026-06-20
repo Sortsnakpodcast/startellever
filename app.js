@@ -79,6 +79,7 @@ let state = {
   selectedCoachId: null,
   shareClaimCode: "",
   shareTeamName: "",
+  shareCoachName: "",
   complete: false
 };
 let activeCup = null;
@@ -188,6 +189,7 @@ function resetGame(formationName, started = state.started) {
     lastPlacedSlotId: null,
     shareClaimCode: "",
     shareTeamName: "",
+    shareCoachName: "",
     complete: false
   };
   els.formationSelect.value = formationName;
@@ -554,6 +556,9 @@ function finishGame() {
   state.complete = true;
   state.coachOptions = drawCoachOptions();
   state.selectedCoachId = null;
+  state.shareClaimCode = state.shareClaimCode || generateClaimCode();
+  state.shareTeamName = "";
+  state.shareCoachName = "";
   const scores = calculateScores();
   els.rollButton.disabled = true;
   els.rollButton.innerHTML = `<span aria-hidden="true">✓</span> Færdig`;
@@ -691,6 +696,7 @@ async function saveHighscore(name, scores, cupStats) {
   let entry = {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     name,
+    claimCode: state.shareClaimCode,
     score: scores.total,
     average: scores.average,
     best: scores.best,
@@ -709,8 +715,8 @@ async function saveHighscore(name, scores, cupStats) {
   setHighscores(highscores);
   const remoteRecord = await saveRemoteTeam(name, scores, cupStats).catch(() => null);
   if (remoteRecord?.id) {
-    state.shareClaimCode = shortClaimCode(remoteRecord.id);
     state.shareTeamName = name;
+    state.shareCoachName = selectedCoach() ? `Træner: ${selectedCoach().name}` : "";
     entry = { ...entry, id: remoteRecord.id };
     remoteHighscores = [entry, ...remoteHighscores]
       .filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index)
@@ -724,10 +730,17 @@ async function saveHighscore(name, scores, cupStats) {
   return entry;
 }
 
-function shortClaimCode(id) {
-  const hex = String(id || "").replace(/[^a-f0-9]/gi, "").slice(0, 12);
-  if (!hex) return "";
-  return BigInt(`0x${hex}`).toString(36).toUpperCase().padStart(8, "0").slice(-8);
+function generateClaimCode() {
+  const alphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+  const bytes = new Uint8Array(6);
+  if (window.crypto?.getRandomValues) {
+    window.crypto.getRandomValues(bytes);
+  } else {
+    bytes.forEach((_, index) => {
+      bytes[index] = Math.floor(Math.random() * 256);
+    });
+  }
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
 }
 
 function compareTournamentEntries(a, b) {
@@ -1273,6 +1286,7 @@ async function saveRemoteTeam(name, scores, cupStats) {
   const team = createTeamFromSlots(name, state.formationName, state.slots);
   const payload = {
     name,
+    claimCode: state.shareClaimCode,
     formation: state.formationName,
     lineup: serializeLineup(team.lineup),
     cupStats: {
@@ -1605,12 +1619,26 @@ async function renderShareCanvas(scores) {
   ctx.font = "800 26px Inter, system-ui, sans-serif";
   ctx.fillText(`${perfectTeam ? "Perfekt hold · " : ""}Gennemsnit ${scores.average} · Bedste ${scores.best} · ${scores.seasons} sæsoner`, 104, 1258);
   ctx.fillStyle = "#a9adb2";
-  ctx.font = "700 22px Inter, system-ui, sans-serif";
-  const claimText = state.shareClaimCode
-    ? `${state.shareTeamName || "Hold"} · ID ${state.shareClaimCode}`
+  ctx.font = "700 19px Inter, system-ui, sans-serif";
+  const claimParts = [
+    state.shareTeamName || null,
+    state.shareClaimCode ? `ID ${state.shareClaimCode}` : null,
+    state.shareCoachName || null
+  ].filter(Boolean);
+  const claimText = claimParts.length
+    ? claimParts.join(" · ")
     : "#Midtjylland #Sortsnak #startellever";
-  ctx.fillText(claimText, 104, 1310);
+  ctx.fillText(fitCanvasText(ctx, claimText, 870), 104, 1310);
   return canvas;
+}
+
+function fitCanvasText(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let trimmed = text;
+  while (trimmed.length > 4 && ctx.measureText(`${trimmed}...`).width > maxWidth) {
+    trimmed = trimmed.slice(0, -1);
+  }
+  return `${trimmed}...`;
 }
 
 function drawSharePitch(ctx, pitch, perfectTeam = false) {

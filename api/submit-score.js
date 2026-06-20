@@ -30,6 +30,7 @@ function setSecurityHeaders(res) {
 
 function buildDatabaseRow(payload) {
   const playerName = sanitizeName(payload.name);
+  const claimCode = sanitizeClaimCode(payload.claimCode);
   const formation = sanitizeFormation(payload.formation);
   const lineup = sanitizeLineup(payload.lineup);
   const cupStats = sanitizeCupStats(payload.cupStats);
@@ -38,6 +39,7 @@ function buildDatabaseRow(payload) {
 
   return {
     player_name: playerName,
+    claim_code: claimCode,
     team_score: scores.average,
     average_score: scores.average,
     best_player_score: scores.best,
@@ -54,6 +56,12 @@ function buildDatabaseRow(payload) {
     won_cup: cupStats.wins >= GOLD_CUP_WINS,
     approved: true
   };
+}
+
+function sanitizeClaimCode(claimCode) {
+  const value = String(claimCode || "").trim().toUpperCase();
+  if (!/^[A-Z0-9]{6,10}$/.test(value)) throw publicError("Invalid claim code");
+  return value;
 }
 
 function sanitizeName(name) {
