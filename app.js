@@ -568,7 +568,7 @@ function finishGame() {
   const scores = calculateScores();
   els.rollButton.disabled = true;
   els.rollButton.innerHTML = `<span aria-hidden="true">✓</span> Færdig`;
-  els.drawTitle.textContent = `Startellever færdig - din score er ${scores.total}`;
+  els.drawTitle.textContent = `Start11 færdig - din score er ${scores.total}`;
   els.drawSubtitle.textContent = "Del dit hold på SoMe";
   updateSeasonCardState();
   els.resultPanel.hidden = false;
@@ -898,7 +898,7 @@ async function finishCupTournament(eliminated) {
     ${renderCupMatchList(activeCup.matches)}
     <div class="cup-share-cta">
       <strong>${eliminated ? "Tak for kampen" : "Cupvinder"}</strong>
-      <p>Del din Startellever på SoMe og se, om andre kan slå din score.</p>
+      <p>Del din Start11 på SoMe og se, om andre kan slå din score.</p>
       <div>
         <button id="cupShareImageButton" class="primary-button" type="button">
           <span aria-hidden="true">↗</span>
@@ -1037,10 +1037,10 @@ function openHighscoreTeamModal(entry) {
           <small>${entry.formation || ""}</small>
         </div>
       </div>
-      <div class="lineup-preview-pitch" aria-label="Gemt startellever"></div>
+      <div class="lineup-preview-pitch" aria-label="Gemt Start11"></div>
     </section>
   `;
-  overlay.querySelector("#lineupModalTitle").textContent = entry.name || "Startellever";
+  overlay.querySelector("#lineupModalTitle").textContent = entry.name || "Start11";
   overlay.querySelector(".lineup-preview-pitch").append(renderHighscorePitch(entry));
   overlay.querySelector(".lineup-modal-close").addEventListener("click", closeHighscoreTeamModal);
   overlay.addEventListener("click", (event) => {
@@ -1584,7 +1584,7 @@ async function renderShareCanvas(scores) {
 
   ctx.fillStyle = perfectTeam ? "#f7d46d" : "#f4f4f1";
   ctx.font = "900 64px Inter, system-ui, sans-serif";
-  ctx.fillText("Startellever", 180, 116);
+  ctx.fillText("Start11", 180, 116);
   ctx.fillStyle = "#a9adb2";
   ctx.font = "700 24px Inter, system-ui, sans-serif";
   ctx.fillText("Sort Snak · FC Midtjylland", 182, 154);
@@ -1634,7 +1634,7 @@ async function renderShareCanvas(scores) {
   ].filter(Boolean);
   const claimText = claimParts.length
     ? claimParts.join(" · ")
-    : "#Midtjylland #Sortsnak #startellever";
+    : "#Midtjylland #Sortsnak #Start11";
   ctx.fillText(fitCanvasText(ctx, claimText, 870), 104, 1310);
   return canvas;
 }
@@ -1770,10 +1770,10 @@ function showShareImagePreview(blob) {
       <button class="modal-close" type="button" aria-label="Luk">×</button>
       <div class="share-preview-header">
         <p class="eyebrow">Del billede</p>
-        <h3 id="sharePreviewTitle">Din Startellever</h3>
+        <h3 id="sharePreviewTitle">Din Start11</h3>
         <p>Tryk del for at sende billedet videre. På iPhone kan du også holde fingeren på billedet og gemme det i Fotos.</p>
       </div>
-      <img src="${imageUrl}" alt="Delbart billede af din Startellever">
+      <img src="${imageUrl}" alt="Delbart billede af din Start11">
       <div class="share-preview-actions">
         <button class="primary-button" type="button" data-action="share">
           <span aria-hidden="true">↗</span>
@@ -1804,9 +1804,9 @@ function showShareImagePreview(blob) {
 }
 
 async function nativeShareBlob(blob) {
-  const file = new File([blob], "sort-snak-startellever.png", { type: "image/png" });
+  const file = new File([blob], "sort-snak-start11.png", { type: "image/png" });
   if (navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ files: [file], title: "Sort Snak Startellever", text: "Min Sort Snak Startellever #startellever" });
+    await navigator.share({ files: [file], title: "Sort Snak Start11", text: "Min Sort Snak Start11 #Start11" });
   } else {
     downloadBlob(blob);
   }
@@ -1815,7 +1815,7 @@ async function nativeShareBlob(blob) {
 function downloadBlob(blob) {
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "sort-snak-startellever.png";
+  link.download = "sort-snak-start11.png";
   link.click();
   URL.revokeObjectURL(link.href);
 }

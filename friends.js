@@ -219,10 +219,12 @@ async function refreshRoom() {
     fetchPicks(client, friendsState.roomCode)
   ]);
   if (!room) return;
+  const normalizedPlayers = normalizeFriendPlayersForRoom(room, players);
   friendsState.room = room;
-  friendsState.players = players;
+  friendsState.players = normalizedPlayers;
   friendsState.picks = picks;
   friendsState.isHost = room.host_player_id === friendsState.playerId;
+  repairFriendPlayerFormations(client, room, players).catch(() => {});
   renderRoom();
 }
 
@@ -233,7 +235,7 @@ function renderRoom() {
   els.roomPlayers.innerHTML = players.map((player) => `
     <div class="friend-row">
       <strong>${escapeHtml(player.team_name)}</strong>
-      <span>${room.status === "lobby" ? "formation lodtrækkes" : player.formation}</span>
+      <span>${room.status === "lobby" ? "formation lodtrækkes" : sharedFriendFormation()}</span>
       <small>${lineupCount(player.lineup)}/11</small>
     </div>
   `).join("");
@@ -380,7 +382,7 @@ function renderBoards(me, order, pickIndex) {
 
 function renderLineupDots(player) {
   if (!player) return "";
-  const layout = friendsFormationLayouts[player.formation] || [];
+  const layout = friendsFormationLayouts[player.formation || sharedFriendFormation()] || [];
   return (player.lineup || []).map((slot, index) => {
     const [x, y] = layout[index] || [50, 50];
     const hasPlayer = Boolean(slot.player);
@@ -399,10 +401,14 @@ function renderPositionPlayers(role, me, isMyTurn) {
     .map((slot) => playerNameKey(slot.player)));
   const currentSlot = currentFriendSlot(me);
   const formation = sharedFriendFormation();
+  const useEmergencySlots = isMyTurn && currentSlot && !hasNormalFriendChoice(me, role, formation);
 
   const options = friendsPlayers
     .map((player) => {
-      const availableSlots = currentSlot && canPlayFriendRole(player, role, formation) ? [currentSlot] : [];
+      const canUseSlot = currentSlot && (
+        canPlayFriendRole(player, role, formation) || (useEmergencySlots && canPlayEmergencyRole(player, role))
+      );
+      const availableSlots = canUseSlot ? [currentSlot] : [];
       const alreadyTaken = takenVersionKeys.has(playerVersionKey(player));
       const alreadyOnOwnTeam = myPlayerNameKeys.has(playerNameKey(player));
       const roundNameLimitReached = isFriendRoundNameLimitReached(player);
@@ -491,7 +497,9 @@ function validateFriendPick(playerId, slotId) {
   const player = friendsPlayers.find((item) => item.id === playerId);
   const slot = me?.lineup.find((item) => item.id === slotId);
   if (!player || !slot || slot.player) return null;
-  if (slot.id !== currentFriendSlot(me)?.id || slot.role !== role || !canPlayFriendRole(player, role, sharedFriendFormation())) return null;
+  const formation = sharedFriendFormation();
+  const useEmergencySlot = !hasNormalFriendChoice(me, role, formation) && canPlayEmergencyRole(player, role);
+  if (slot.id !== currentFriendSlot(me)?.id || slot.role !== role || (!canPlayFriendRole(player, role, formation) && !useEmergencySlot)) return null;
   const key = playerVersionKey(player);
   const nameKey = playerNameKey(player);
   if (friendsState.picks.some((pick) => pickVersionKey(pick) === key)) return null;
@@ -609,10 +617,11 @@ function demoBotPick(friendPlayer) {
     .filter((lineupSlot) => lineupSlot.player)
     .map((lineupSlot) => playerNameKey(lineupSlot.player)));
   const formation = sharedFriendFormation();
+  const useEmergencySlots = !hasNormalFriendChoice(friendPlayer, role, formation);
   const option = friendsPlayers
     .map((player) => ({
       player,
-      slots: canPlayFriendRole(player, role, formation) ? [slot] : [],
+      slots: canPlayFriendRole(player, role, formation) || (useEmergencySlots && canPlayEmergencyRole(player, role)) ? [slot] : [],
       key: playerVersionKey(player),
       nameKey: playerNameKey(player)
     }))
@@ -796,7 +805,7 @@ function friendStandingsText(standings) {
     const goalDiff = team.goalDiff >= 0 ? `+${team.goalDiff}` : `${team.goalDiff}`;
     return `${trophy}${index + 1}. ${team.name} - ${team.points} point · ${goalDiff} · ${team.goalsFor}-${team.goalsAgainst}`;
   });
-  return `Startellever med venner\n${lines.join("\n")}\n\n#Sortsnak #startellever`;
+  return `Start11 med venner\n${lines.join("\n")}\n\n#Sortsnak #Start11`;
 }
 
 async function friendStandingsImageBlob(standings, matches = []) {
@@ -828,7 +837,7 @@ async function renderFriendStandingsCanvas(canvas, standings, matches = []) {
 
   ctx.fillStyle = "#f4f4f1";
   ctx.font = "900 62px Inter, system-ui, sans-serif";
-  ctx.fillText("Startellever", 186, 116);
+  ctx.fillText("Start11", 186, 116);
   ctx.fillStyle = "#a9adb2";
   ctx.font = "750 27px Inter, system-ui, sans-serif";
   ctx.fillText("Sort Snak · med venner", 188, 155);
@@ -912,7 +921,7 @@ async function renderFriendStandingsCanvas(canvas, standings, matches = []) {
 
   ctx.fillStyle = "#a9adb2";
   ctx.font = "800 24px Inter, system-ui, sans-serif";
-  ctx.fillText("#Sortsnak #startellever", 70, 1030);
+  ctx.fillText("#Sortsnak #Start11", 70, 1030);
 }
 
 function showFriendStandingsPreview(blob, standings) {
@@ -926,7 +935,7 @@ function showFriendStandingsPreview(blob, standings) {
       <button class="modal-close" type="button" aria-label="Luk">×</button>
       <div class="share-preview-header">
         <p class="eyebrow">Del slutstilling</p>
-        <h3 id="friendStandingsPreviewTitle">Startellever med venner</h3>
+        <h3 id="friendStandingsPreviewTitle">Start11 med venner</h3>
         <p>Tryk del for at sende billedet videre. På iPhone kan du også holde fingeren på billedet og gemme det i Fotos.</p>
       </div>
       <img src="${imageUrl}" alt="Delbart billede af slutstillingen">
@@ -951,10 +960,10 @@ function showFriendStandingsPreview(blob, standings) {
     if (event.target === overlay) close();
   });
   overlay.querySelector('[data-action="share"]').addEventListener("click", async () => {
-    await nativeShareFriendBlob(blob, "sort-snak-startellever-slutstilling.png", friendStandingsText(standings));
+    await nativeShareFriendBlob(blob, "sort-snak-start11-slutstilling.png", friendStandingsText(standings));
   });
   overlay.querySelector('[data-action="download"]').addEventListener("click", () => {
-    downloadFriendBlob(blob, "sort-snak-startellever-slutstilling.png");
+    downloadFriendBlob(blob, "sort-snak-start11-slutstilling.png");
   });
   document.body.append(overlay);
 }
@@ -962,7 +971,7 @@ function showFriendStandingsPreview(blob, standings) {
 async function nativeShareFriendBlob(blob, filename, text) {
   const file = new File([blob], filename, { type: "image/png" });
   if (navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ files: [file], title: "Startellever med venner", text });
+    await navigator.share({ files: [file], title: "Start11 med venner", text });
   } else {
     downloadFriendBlob(blob, filename);
   }
@@ -1059,7 +1068,7 @@ function openFriendTeamModal(team) {
       <button class="modal-close lineup-modal-close" type="button" aria-label="Luk holdvisning">×</button>
       <div class="lineup-modal-header">
         <div>
-          <p class="eyebrow">Startellever med venner</p>
+          <p class="eyebrow">Start11 med venner</p>
           <h3 id="friendLineupModalTitle"></h3>
         </div>
         <div>
@@ -1070,7 +1079,7 @@ function openFriendTeamModal(team) {
       <div class="lineup-preview-pitch" aria-label="Vennehold"></div>
     </section>
   `;
-  overlay.querySelector("#friendLineupModalTitle").textContent = team.name || "Startellever";
+  overlay.querySelector("#friendLineupModalTitle").textContent = team.name || "Start11";
   overlay.querySelector(".lineup-preview-pitch").append(renderFriendModalPitch(team));
   overlay.querySelector(".lineup-modal-close").addEventListener("click", closeFriendTeamModal);
   overlay.addEventListener("click", (event) => {
@@ -1212,6 +1221,47 @@ function resetFriendPlayerFormation(player, formation) {
   };
 }
 
+function normalizeFriendPlayersForRoom(room, players) {
+  if (room?.status === "lobby") return players;
+  const formation = room?.season_draw_counts?.formation || players[0]?.formation || defaultFriendFormation;
+  const roles = friendsFormations[formation] || friendsFormations[defaultFriendFormation];
+  return players.map((player) => normalizeFriendPlayerFormation(player, formation, roles));
+}
+
+function normalizeFriendPlayerFormation(player, formation, roles = friendsFormations[formation] || []) {
+  const existingLineup = player.lineup || [];
+  const nextLineup = roles.map((role, index) => {
+    const existing = existingLineup[index] || {};
+    return {
+      ...existing,
+      id: `${role}-${index}`,
+      role,
+      player: existing.player || null
+    };
+  });
+  return { ...player, formation, lineup: nextLineup };
+}
+
+async function repairFriendPlayerFormations(client, room, players) {
+  if (!client || !room || room.status === "lobby") return;
+  const formation = room.season_draw_counts?.formation;
+  if (!formation || !friendsFormations[formation]) return;
+  const roles = friendsFormations[formation];
+  const repairs = players.filter((player) =>
+    player.formation !== formation ||
+    (player.lineup || []).length !== roles.length ||
+    roles.some((role, index) => player.lineup?.[index]?.role !== role)
+  );
+  if (!repairs.length) return;
+  await Promise.all(repairs.map((player) => {
+    const normalized = normalizeFriendPlayerFormation(player, formation, roles);
+    return updateOrThrow(client.from(playersTable).update({
+      formation: normalized.formation,
+      lineup: normalized.lineup
+    }).eq("id", player.id));
+  }));
+}
+
 function sharedFriendFormation() {
   return friendsState.room?.season_draw_counts?.formation || friendsState.players[0]?.formation || defaultFriendFormation;
 }
@@ -1245,6 +1295,21 @@ function getAvailableSlots(friendPlayer, player, allowEmergencySlots = false) {
     if (slot.player) return false;
     return canPlayFriendRole(player, slot.role, friendPlayer.formation) || (allowEmergencySlots && canPlayEmergencyRole(player, slot.role));
   });
+}
+
+function hasNormalFriendChoice(friendPlayer, role, formation = sharedFriendFormation()) {
+  const slot = currentFriendSlot(friendPlayer);
+  if (!slot) return false;
+  const takenVersionKeys = new Set(friendsState.picks.map(pickVersionKey));
+  const ownNameKeys = new Set((friendPlayer.lineup || [])
+    .filter((lineupSlot) => lineupSlot.player)
+    .map((lineupSlot) => playerNameKey(lineupSlot.player)));
+  return friendsPlayers.some((player) =>
+    canPlayFriendRole(player, role, formation) &&
+    !takenVersionKeys.has(playerVersionKey(player)) &&
+    !ownNameKeys.has(playerNameKey(player)) &&
+    !isFriendRoundNameLimitReached(player)
+  );
 }
 
 function canPlayRole(player, role) {
@@ -1382,7 +1447,7 @@ function requireClient() {
 function copyRoomCode() {
   const link = friendInviteLink(friendsState.roomCode);
   const code = friendsState.roomCode;
-  const text = `Spil Startellever med venner her: ${link}\nTurneringskode: ${code}`;
+  const text = `Spil Start11 med venner her: ${link}\nTurneringskode: ${code}`;
   navigator.clipboard?.writeText(text);
   showFriendToast("Invitationen er kopieret.");
 }
