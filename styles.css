@@ -47,6 +47,10 @@ a {
   text-decoration: none;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .app {
   width: min(1440px, 100%);
   margin: 0 auto;
@@ -172,7 +176,8 @@ select:disabled {
 }
 
 .icon-button,
-.primary-button {
+.primary-button,
+.secondary-button {
   height: 42px;
   display: inline-flex;
   align-items: center;
@@ -192,6 +197,23 @@ select:disabled {
   background: var(--red);
   border-color: #ff5961;
   font-weight: 800;
+}
+
+.secondary-button {
+  min-width: 110px;
+  padding: 0 16px;
+  background: rgba(27, 29, 32, .72);
+  border-color: rgba(244, 244, 241, .18);
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.secondary-button:hover {
+  color: var(--text);
+}
+
+.start-friends-button {
+  width: 100%;
 }
 
 button:hover {
@@ -467,10 +489,15 @@ button:disabled {
   min-width: 28px;
   padding: 2px 7px;
   border-radius: 999px;
-  background: var(--gold);
-  color: #171411;
+  background: rgba(244, 244, 241, .16);
+  color: var(--text);
   font-weight: 900;
   font-size: 9px;
+}
+
+.slot .rating.elite {
+  background: var(--gold);
+  color: #171411;
 }
 
 .draft-panel {
@@ -720,6 +747,19 @@ button:disabled {
   padding: 4px 9px;
   background: rgba(215, 166, 61, .08);
   color: var(--gold);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.season-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: rgba(255, 255, 255, .06);
+  color: var(--muted);
   font-size: 11px;
   font-weight: 900;
 }
@@ -1116,6 +1156,811 @@ button:disabled {
 
 .lineup-modal-card .modal-close {
   display: grid;
+}
+
+.share-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  overflow: auto;
+  background: rgba(0, 0, 0, .78);
+}
+
+.share-preview-card {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  width: min(520px, calc(100vw - 28px));
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid rgba(244, 244, 241, .28);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(226, 35, 47, .18), rgba(17, 19, 21, .96) 52%),
+    rgba(17, 19, 21, .96);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .62);
+}
+
+.share-preview-card .modal-close {
+  display: grid;
+}
+
+.share-preview-header {
+  padding-right: 44px;
+}
+
+.share-preview-header h3 {
+  margin: 3px 0 6px;
+  font-size: 28px;
+  line-height: 1.05;
+}
+
+.share-preview-header p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.share-preview-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #111315;
+}
+
+.share-preview-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.friends-app {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.friends-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.friends-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.friends-header .brand {
+  min-width: 0;
+}
+
+.friends-header .brand h1 {
+  font-size: 28px;
+}
+
+.friends-back {
+  flex: 0 0 auto;
+}
+
+.friends-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(226, 35, 47, .14), rgba(17, 19, 21, .86) 52%),
+    rgba(27, 29, 32, .88);
+  box-shadow: var(--shadow);
+}
+
+.friends-card h2 {
+  margin: 0;
+  font-size: 42px;
+  line-height: 1.04;
+}
+
+.friends-card p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.friends-actions,
+.friends-form {
+  display: grid;
+  gap: 10px;
+}
+
+.friends-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.friend-choice-button {
+  min-height: 58px;
+  border-color: rgba(244, 244, 241, .20);
+  background: rgba(35, 38, 42, .72);
+}
+
+.friends-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.friends-form input,
+.friends-form select {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(17, 19, 21, .92);
+  color: var(--text);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.room-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.room-topline h2 {
+  font-size: 48px;
+}
+
+.friends-list,
+.friends-standings,
+.friends-results {
+  display: grid;
+  gap: 8px;
+}
+
+.friend-row,
+.friends-standings div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .58);
+}
+
+.friend-row strong,
+.friends-standings strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-row span,
+.friend-row small,
+.friends-standings span,
+.friends-results span {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.standings-lineup-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.friend-share-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, .45fr);
+  gap: 10px;
+}
+
+.friend-room-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.friends-round-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(37, 56, 82, .88);
+  color: #cde1ff;
+  font-weight: 900;
+}
+
+.turn-banner {
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .58);
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.turn-banner.is-active {
+  border-color: rgba(226, 35, 47, .9);
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(226, 35, 47, .30), rgba(8, 10, 11, .72));
+}
+
+.friends-order {
+  display: grid;
+  gap: 5px;
+}
+
+.friend-overview-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px 68px auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+  padding: 7px 8px;
+  border: 1px solid rgba(244, 244, 241, .08);
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .50);
+}
+
+.friend-overview-row.is-me {
+  border-color: rgba(215, 166, 61, .40);
+  background: rgba(215, 166, 61, .10);
+}
+
+.friend-overview-row.active {
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.friend-overview-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-overview-row span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.friend-overview-row button {
+  min-height: 27px;
+  padding: 3px 9px;
+  border: 1px solid rgba(215, 166, 61, .42);
+  border-radius: 999px;
+  background: rgba(215, 166, 61, .10);
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.friends-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.friend-live-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .46);
+}
+
+.friend-live-card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.friend-live-card strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-live-card span,
+.friend-next-match,
+.friend-ready-team p,
+.friend-waiting-note {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.friend-live-pitch {
+  position: relative;
+  min-height: 170px;
+  overflow: hidden;
+  border: 1px solid rgba(211, 236, 219, .55);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(20, 86, 54, .96) 0 12.5%, rgba(36, 122, 71, .96) 12.5% 25%, rgba(20, 86, 54, .96) 25% 37.5%, rgba(36, 122, 71, .96) 37.5% 50%, rgba(20, 86, 54, .96) 50% 62.5%, rgba(36, 122, 71, .96) 62.5% 75%, rgba(20, 86, 54, .96) 75% 87.5%, rgba(36, 122, 71, .96) 87.5% 100%);
+}
+
+.friend-live-pitch::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  height: 1px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, .26);
+}
+
+.friend-live-pitch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 54px;
+  height: 54px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .42) 0 3px, transparent 4px);
+}
+
+.friend-live-pitch span {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  height: 25px;
+  padding: 0 6px;
+  border: 1px dashed rgba(244, 244, 241, .26);
+  border-radius: 7px;
+  background: rgba(8, 10, 11, .52);
+  color: rgba(244, 244, 241, .64);
+  font-size: 11px;
+  font-weight: 950;
+  transform: translate(-50%, -50%);
+}
+
+.friend-live-pitch span.filled {
+  border-style: solid;
+  border-color: rgba(215, 166, 61, .72);
+  background: rgba(8, 10, 11, .88);
+  color: var(--gold);
+}
+
+.friend-draft-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .46);
+}
+
+.friend-draft-status strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-draft-status span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.friend-round-log,
+.friend-opponent-card,
+.friend-pending-pick {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .46);
+}
+
+.friend-round-log {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.friend-round-log span,
+.friend-round-log small,
+.friend-opponent-card span,
+.friend-pending-pick span {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.friend-round-log div {
+  display: grid;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.friend-round-log small {
+  font-size: 13px;
+}
+
+.friend-opponent-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+}
+
+.friend-opponent-card strong,
+.friend-opponent-card span {
+  display: block;
+}
+
+.friend-opponent-card .secondary-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.friend-team-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .42);
+}
+
+.friend-team-card h3,
+.friend-team-card p {
+  margin: 0;
+}
+
+.friend-team-card h3 {
+  font-size: 18px;
+}
+
+.friend-team-card p {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.friend-mini-pitch {
+  position: relative;
+  min-height: 150px;
+  overflow: hidden;
+  border: 1px solid rgba(211, 236, 219, .55);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(20, 86, 54, .96) 0 12.5%, rgba(36, 122, 71, .96) 12.5% 25%, rgba(20, 86, 54, .96) 25% 37.5%, rgba(36, 122, 71, .96) 37.5% 50%, rgba(20, 86, 54, .96) 50% 62.5%, rgba(36, 122, 71, .96) 62.5% 75%, rgba(20, 86, 54, .96) 75% 87.5%, rgba(36, 122, 71, .96) 87.5% 100%);
+}
+
+.friend-mini-pitch span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px dashed rgba(244, 244, 241, .22);
+  border-radius: 7px;
+  background: rgba(8, 10, 11, .52);
+  color: rgba(244, 244, 241, .58);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.friend-mini-pitch span.filled {
+  border-style: solid;
+  border-color: rgba(215, 166, 61, .72);
+  background: rgba(8, 10, 11, .86);
+  color: var(--gold);
+}
+
+.friends-player-list {
+  display: grid;
+  gap: 8px;
+}
+
+.friend-player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(27, 29, 32, .90);
+}
+
+.friend-player.disabled {
+  opacity: .42;
+}
+
+.friend-player h3 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.friend-player span {
+  display: inline-flex;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.friend-player > strong,
+.friend-player .rating-badge {
+  color: var(--gold);
+  font-size: 42px;
+  line-height: 1;
+}
+
+.friend-player .rating-badge {
+  color: var(--text);
+}
+
+.friend-player .rating-badge.elite {
+  color: var(--gold);
+}
+
+.friend-player-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.friend-slot-buttons {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+  gap: 8px;
+}
+
+.friend-slot-buttons button {
+  min-height: 42px;
+  border-color: rgba(215, 166, 61, .70);
+  background: rgba(215, 166, 61, .16);
+  color: var(--text);
+  font-weight: 900;
+}
+
+.friend-player.selected {
+  border-color: rgba(215, 166, 61, .72);
+  box-shadow: inset 4px 0 0 var(--gold);
+}
+
+.friend-pending-pick {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-color: rgba(215, 166, 61, .64);
+  background: linear-gradient(135deg, rgba(215, 166, 61, .16), rgba(8, 10, 11, .58));
+}
+
+.friend-pending-pick strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 18px;
+}
+
+.friend-pending-pick .primary-button,
+.friend-pending-pick .secondary-button {
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 15px;
+}
+
+.friends-results span {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .46);
+}
+
+.friend-ready-grid,
+.friend-ready-list {
+  display: grid;
+  gap: 10px;
+}
+
+.friend-ready-team {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .50);
+}
+
+.friend-ready-team h3,
+.friend-ready-team p {
+  margin: 0;
+}
+
+.friend-ready-team h3 {
+  font-size: 22px;
+}
+
+.friend-ready-team p strong {
+  color: var(--text);
+}
+
+.friend-ready-team p strong.elite {
+  color: var(--gold);
+}
+
+.friend-ready-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .50);
+}
+
+.friend-ready-row strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 19px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-ready-row span {
+  color: var(--muted);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.friend-ready-row span.elite {
+  color: var(--gold);
+}
+
+.friend-ready-row .secondary-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.friend-match-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(215, 166, 61, .55);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(215, 166, 61, .15), rgba(8, 10, 11, .62));
+}
+
+.friend-match-card span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.friend-match-card span:last-child {
+  text-align: right;
+}
+
+.friend-match-card strong {
+  color: var(--text);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.friend-ranking-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.friend-toast-wrap {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 60;
+  display: grid;
+  gap: 8px;
+  width: min(420px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.friend-toast {
+  padding: 12px 14px;
+  border: 1px solid rgba(215, 166, 61, .45);
+  border-radius: 8px;
+  background: rgba(8, 10, 11, .94);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-weight: 900;
+  text-align: center;
+}
+
+.friend-draw-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, .58);
+}
+
+.friend-draw-modal > div {
+  display: grid;
+  gap: 8px;
+  width: min(420px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(215, 166, 61, .72);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(215, 166, 61, .18), rgba(17, 19, 21, .96)),
+    rgba(17, 19, 21, .96);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.friend-draw-modal strong {
+  color: var(--gold);
+  font-size: clamp(38px, 8vw, 64px);
+  line-height: 1;
+}
+
+.friend-draw-modal small {
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 900;
 }
 
 .lineup-modal-header {
@@ -1804,5 +2649,151 @@ button:disabled {
 
   .tournament-form .primary-button {
     width: 100%;
+  }
+
+  .share-preview-card {
+    padding: 12px;
+  }
+
+  .share-preview-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .friends-app {
+    padding: 12px;
+  }
+
+  .friends-header {
+    align-items: flex-start;
+  }
+
+  .friends-header .mark {
+    width: 52px;
+    height: 52px;
+  }
+
+  .friends-header .brand {
+    gap: 10px;
+  }
+
+  .friends-header .brand h1 {
+    font-size: 24px;
+  }
+
+  .friends-back {
+    min-width: 0;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .friends-card {
+    padding: 14px;
+  }
+
+  .friends-card h2,
+  .room-topline h2 {
+    font-size: 34px;
+  }
+
+  .friends-actions,
+  .friends-board,
+  .friend-room-actions,
+  .friend-share-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .turn-banner {
+    font-size: 15px;
+  }
+
+  .friend-overview-row {
+    grid-template-columns: minmax(0, 1fr) 42px 58px auto;
+    gap: 6px;
+    min-height: 34px;
+    padding: 6px 7px;
+  }
+
+  .friend-overview-row strong {
+    font-size: 14px;
+  }
+
+  .friend-overview-row span,
+  .friend-overview-row button {
+    font-size: 11px;
+  }
+
+  .room-topline {
+    align-items: flex-start;
+  }
+
+  .friend-row,
+  .friends-standings div {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .friends-standings div {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .friend-row small {
+    grid-column: 1 / -1;
+  }
+
+  .friend-player {
+    padding: 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .friend-player h3 {
+    font-size: 20px;
+  }
+
+  .friend-player strong {
+    font-size: 34px;
+  }
+
+  .friend-pending-pick,
+  .friend-opponent-card {
+    grid-template-columns: 1fr;
+  }
+
+  .friend-pending-pick .primary-button,
+  .friend-pending-pick .secondary-button,
+  .friend-opponent-card .secondary-button {
+    width: 100%;
+  }
+
+  .friend-mini-pitch {
+    min-height: 128px;
+  }
+
+  .friend-match-card {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .friend-match-card span:last-child {
+    text-align: center;
+  }
+
+  .friend-ready-team {
+    grid-template-columns: 1fr;
+  }
+
+  .friend-ready-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .friend-ready-row .secondary-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .friend-ready-team .secondary-button {
+    width: 100%;
+  }
+
+  .friend-draw-modal strong {
+    font-size: 52px;
   }
 }

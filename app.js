@@ -92,6 +92,7 @@ const els = {
   startOverlay: document.querySelector("#startOverlay"),
   startFormationSelect: document.querySelector("#startFormationSelect"),
   startGameButton: document.querySelector("#startGameButton"),
+  friendsGameButton: document.querySelector("#friendsGameButton"),
   formationSelect: document.querySelector("#formationSelect"),
   newGameButton: document.querySelector("#newGameButton"),
   rollButton: document.querySelector("#rollButton"),
@@ -121,6 +122,7 @@ function init() {
   });
   els.startFormationSelect.addEventListener("change", () => resetGame(els.startFormationSelect.value, false));
   els.startGameButton.addEventListener("click", startGame);
+  els.friendsGameButton.addEventListener("click", showFriendsModeTeaser);
   els.newGameButton.addEventListener("click", startNewGame);
   els.rollButton.addEventListener("click", rollSeason);
   els.seasonCard.addEventListener("click", handleSeasonCardClick);
@@ -169,6 +171,10 @@ function startNewGame() {
 function startGame() {
   resetGame(els.startFormationSelect.value, true);
   rollSeason();
+}
+
+function showFriendsModeTeaser() {
+  window.location.href = els.friendsGameButton.dataset.href || "friends.html";
 }
 
 function resetGame(formationName, started = state.started) {
@@ -234,7 +240,7 @@ function renderPitch() {
     node.style.top = `${y}%`;
     node.disabled = !isTarget;
     node.innerHTML = slot.player
-      ? `<span class="rating">${slot.player.score}</span><strong>${slot.player.name}</strong><small>${isRoundPick ? isLiftedRoundPick ? "vælg ny plads" : "flyt" : `${slot.role} · ${slot.player.season}`}</small>`
+      ? `<span class="rating ${slot.player.score >= 91 ? "elite" : ""}">${slot.player.score}</span><strong>${slot.player.name}</strong><small>${isRoundPick ? isLiftedRoundPick ? "vælg ny plads" : "flyt" : `${slot.role} · ${slot.player.season}`}</small>`
       : `<strong>${slot.role}</strong><small>${isTarget ? "vælg her" : "ledig"}</small>`;
     if (isTarget) {
       node.addEventListener("click", () => pickPlayer(selectedPlayer.id, slot.id));
@@ -1068,6 +1074,7 @@ function renderHighscorePitch(entry) {
       <small></small>
     `;
     node.querySelector(".rating").textContent = slot.score;
+    node.querySelector(".rating").classList.toggle("elite", Number(slot.score || 0) >= 91);
     node.querySelector("strong").textContent = slot.name;
     node.querySelector("small").textContent = `${slot.role}${slot.season ? ` · ${slot.season}` : ""}`;
     fragment.append(node);
@@ -1744,21 +1751,73 @@ async function shareImageBlob() {
 
 async function downloadShareImage() {
   const blob = await shareImageBlob();
+  downloadBlob(blob);
+}
+
+async function shareLineupImage() {
+  const blob = await shareImageBlob();
+  showShareImagePreview(blob);
+}
+
+function showShareImagePreview(blob) {
+  document.querySelector("#sharePreviewModal")?.remove();
+  const imageUrl = URL.createObjectURL(blob);
+  const overlay = document.createElement("div");
+  overlay.id = "sharePreviewModal";
+  overlay.className = "share-preview-modal";
+  overlay.innerHTML = `
+    <div class="share-preview-card" role="dialog" aria-modal="true" aria-labelledby="sharePreviewTitle">
+      <button class="modal-close" type="button" aria-label="Luk">×</button>
+      <div class="share-preview-header">
+        <p class="eyebrow">Del billede</p>
+        <h3 id="sharePreviewTitle">Din Startellever</h3>
+        <p>Tryk del for at sende billedet videre. På iPhone kan du også holde fingeren på billedet og gemme det i Fotos.</p>
+      </div>
+      <img src="${imageUrl}" alt="Delbart billede af din Startellever">
+      <div class="share-preview-actions">
+        <button class="primary-button" type="button" data-action="share">
+          <span aria-hidden="true">↗</span>
+          Del billede
+        </button>
+        <button class="pick-button" type="button" data-action="download">
+          <span aria-hidden="true">⇩</span>
+          Hent billede
+        </button>
+      </div>
+    </div>
+  `;
+  const close = () => {
+    URL.revokeObjectURL(imageUrl);
+    overlay.remove();
+  };
+  overlay.querySelector(".modal-close").addEventListener("click", close);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) close();
+  });
+  overlay.querySelector('[data-action="share"]').addEventListener("click", async () => {
+    await nativeShareBlob(blob);
+  });
+  overlay.querySelector('[data-action="download"]').addEventListener("click", () => {
+    downloadBlob(blob);
+  });
+  document.body.append(overlay);
+}
+
+async function nativeShareBlob(blob) {
+  const file = new File([blob], "sort-snak-startellever.png", { type: "image/png" });
+  if (navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ files: [file], title: "Sort Snak Startellever", text: "Min Sort Snak Startellever #startellever" });
+  } else {
+    downloadBlob(blob);
+  }
+}
+
+function downloadBlob(blob) {
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = "sort-snak-startellever.png";
   link.click();
   URL.revokeObjectURL(link.href);
-}
-
-async function shareLineupImage() {
-  const blob = await shareImageBlob();
-  const file = new File([blob], "sort-snak-startellever.png", { type: "image/png" });
-  if (navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ files: [file], title: "Sort Snak Startellever", text: "Min Sort Snak Startellever #startellever" });
-  } else {
-    await downloadShareImage();
-  }
 }
 
 function renderScore() {

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sort Snak Startellever med venner</title>
+    <link rel="stylesheet" href="styles.css?v=20260622-friends-private-test">
+  </head>
+  <body>
+    <main class="friends-app">
+      <section class="friends-shell">
+        <header class="friends-header">
+          <a class="brand" href="index.html" aria-label="Tilbage til Startellever">
+            <img class="mark" src="assets/sort-snak-logo.png?v=20260615-podcast-logo" alt="Sort Snak">
+            <div>
+              <p>Sort Snak</p>
+              <h1>Startellever med venner</h1>
+            </div>
+          </a>
+          <a class="secondary-button friends-back" href="index.html">Solo-spil</a>
+        </header>
+
+        <section class="friends-card" id="friendsHome">
+          <p class="eyebrow">Venne-mode</p>
+          <h2>Spil med venner</h2>
+          <p>Opret en startelleverturnering, del koden, og draft mod venner.</p>
+          <div class="friends-actions">
+            <button class="secondary-button friend-choice-button" id="createRoomButton" type="button">Opret spil</button>
+            <button class="secondary-button friend-choice-button" id="joinRoomToggle" type="button">Deltag med kode</button>
+          </div>
+          <form class="friends-form" id="joinRoomForm" hidden>
+            <label>
+              <span>Turneringskode</span>
+              <input id="joinRoomCode" maxlength="6" autocomplete="off" placeholder="AB12C">
+            </label>
+            <label>
+              <span>Holdnavn</span>
+              <input id="joinTeamName" maxlength="18" autocomplete="off" placeholder="Dit hold">
+            </label>
+            <button class="primary-button" type="submit">Deltag</button>
+          </form>
+        </section>
+
+        <section class="friends-card" id="createRoomPanel" hidden>
+          <p class="eyebrow">Opret spil</p>
+          <h2>Opret en Startelleverturnering</h2>
+          <p>Når rummet er oprettet, får du en kode, som de andre kan bruge til at deltage. Formation lodtrækkes, når spillet starter.</p>
+          <form class="friends-form" id="createRoomForm">
+            <label>
+              <span>Holdnavn</span>
+              <input id="hostTeamName" maxlength="18" autocomplete="off" placeholder="Dit hold">
+            </label>
+            <button class="primary-button" type="submit">Opret spil</button>
+          </form>
+        </section>
+
+        <section class="friends-card" id="roomPanel" hidden>
+          <div class="room-topline">
+            <div>
+              <p class="eyebrow">Turneringskode</p>
+              <h2 id="roomCodeText">-----</h2>
+            </div>
+            <button class="secondary-button" id="copyRoomCodeButton" type="button">Kopiér kode</button>
+          </div>
+          <p id="roomStatusText">Del koden med de andre. Når mindst to hold er med, kan værten starte.</p>
+          <div class="friends-list" id="roomPlayers"></div>
+          <div class="friend-room-actions">
+            <p class="friend-waiting-note" id="friendWaitingNote">Venter på deltagere...</p>
+            <button class="secondary-button demo-only-button" id="addDemoPlayerButton" type="button" hidden>Tilføj testhold</button>
+            <button class="primary-button" id="startFriendsDraftButton" type="button" hidden>Lodtræk formation og start</button>
+          </div>
+        </section>
+
+        <section class="friends-card friends-draft" id="draftPanel" hidden>
+          <div class="room-topline">
+            <div>
+              <p class="eyebrow" id="friendsFormationText">Formation</p>
+              <h2 id="friendsSeasonTitle">--/--</h2>
+            </div>
+            <div class="friends-round-pill" id="friendsRoundText">Runde 1/11</div>
+          </div>
+          <div class="turn-banner" id="turnBanner"></div>
+          <div class="friends-order" id="friendsOrder"></div>
+          <div class="friends-board" id="friendsBoard"></div>
+          <div class="friends-player-list" id="friendsPlayerList"></div>
+        </section>
+
+        <section class="friends-card" id="friendsResultPanel" hidden></section>
+      </section>
+    </main>
+
+    <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=20260622-friends-private-test"></script>
+    <script src="players-data.js?v=20260622-friends-private-test"></script>
+    <script src="friends.js?v=20260622-friends-private-test"></script>
+  </body>
+</html>
