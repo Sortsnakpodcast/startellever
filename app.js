@@ -1698,7 +1698,7 @@ function drawSharePlayer(ctx, slot, index, pitch) {
 
 async function drawLogo(ctx, x, y, size) {
   const img = new Image();
-  img.src = "assets/sort-snak-logo.png?v=20260615-podcast-logo";
+  img.src = "/assets/sort-snak-logo.png?v=20260615-podcast-logo";
   try {
     await img.decode();
     ctx.save();

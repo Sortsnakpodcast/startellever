@@ -1460,7 +1460,7 @@ function fitFriendCanvasText(ctx, text, maxWidth) {
 }
 
 async function drawFriendLogo(ctx, x, y, size) {
-  const logo = await loadFriendImage("assets/sort-snak-logo.png?v=20260615-podcast-logo");
+  const logo = await loadFriendImage("/assets/sort-snak-logo.png?v=20260615-podcast-logo");
   if (logo) {
     ctx.drawImage(logo, x, y, size, size);
     return;
