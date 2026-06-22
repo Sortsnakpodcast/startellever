@@ -29,6 +29,11 @@ const friendsPlayers = window.FCM_PLAYERS_DATA?.players || [];
 const roomsTable = "startellever_friend_rooms";
 const playersTable = "startellever_friend_players";
 const picksTable = "startellever_friend_picks";
+const friendStorageKeys = {
+  playerId: "startellever_friend_player_id",
+  roomCode: "startellever_friend_room_code",
+  isHost: "startellever_friend_is_host"
+};
 const maxFriendsPlayers = 4;
 const draftRounds = 11;
 const defaultFriendFormation = "4-3-3";
@@ -59,7 +64,7 @@ let friendsClient = null;
 let pollTimer = null;
 let friendsState = {
   roomCode: "",
-  playerId: localStorage.getItem("startellever_friend_player_id") || "",
+  playerId: localStorage.getItem(friendStorageKeys.playerId) || "",
   isHost: false,
   demo: false,
   room: null,
@@ -113,6 +118,8 @@ function initFriends() {
   els.copyRoomCodeButton.addEventListener("click", copyRoomCode);
   els.addDemoPlayerButton.addEventListener("click", addDemoPlayer);
   els.startDraftButton.addEventListener("click", startDraft);
+  hydrateFriendInviteCode();
+  window.setTimeout(() => restoreFriendSession(0), 250);
 }
 
 function getClient() {
@@ -190,7 +197,7 @@ function enterRoom(roomCode, playerId, isHost) {
   friendsState.playerId = playerId;
   friendsState.isHost = isHost;
   friendsState.demo = false;
-  localStorage.setItem("startellever_friend_player_id", playerId);
+  persistFriendSession(roomCode, playerId, isHost);
   els.home.hidden = true;
   els.createPanel.hidden = true;
   els.roomPanel.hidden = false;
@@ -555,7 +562,7 @@ function enterDemoRoom(name, formation) {
     lastSeenPickCount: 0,
     lastSeenRound: null
   };
-  localStorage.setItem("startellever_friend_player_id", playerId);
+  persistFriendSession(demoRoomCode, playerId, true);
   if (pollTimer) window.clearInterval(pollTimer);
   els.home.hidden = true;
   els.createPanel.hidden = true;
@@ -739,7 +746,8 @@ function renderTournament() {
   attachFriendLineupButtons(teams);
   els.resultPanel.querySelector("#shareFriendStandingsButton")?.addEventListener("click", () => shareFriendStandings(standings, tournament.matches));
   els.resultPanel.querySelector("#playFriendsAgainButton")?.addEventListener("click", () => {
-    window.location.href = "friends.html";
+    clearFriendSession();
+    window.location.href = "/friends.html";
   });
   runTournamentAutoReveal();
 }
@@ -1372,8 +1380,72 @@ function requireClient() {
 }
 
 function copyRoomCode() {
-  navigator.clipboard?.writeText(friendsState.roomCode);
-  showFriendToast("Koden er kopieret.");
+  const link = friendInviteLink(friendsState.roomCode);
+  const code = friendsState.roomCode;
+  const text = `Spil Startellever med venner her: ${link}\nTurneringskode: ${code}`;
+  navigator.clipboard?.writeText(text);
+  showFriendToast("Invitationen er kopieret.");
+}
+
+function friendInviteLink(code) {
+  return `${window.location.origin}/friends.html?kode=${encodeURIComponent(code)}`;
+}
+
+function persistFriendSession(roomCode, playerId, isHost) {
+  localStorage.setItem(friendStorageKeys.playerId, playerId);
+  localStorage.setItem(friendStorageKeys.roomCode, roomCode);
+  localStorage.setItem(friendStorageKeys.isHost, isHost ? "1" : "0");
+}
+
+function clearFriendSession() {
+  localStorage.removeItem(friendStorageKeys.playerId);
+  localStorage.removeItem(friendStorageKeys.roomCode);
+  localStorage.removeItem(friendStorageKeys.isHost);
+}
+
+function hydrateFriendInviteCode() {
+  const params = new URLSearchParams(window.location.search);
+  const code = cleanRoomCode(params.get("kode") || params.get("code") || "");
+  if (!code) return;
+  els.joinRoomCode.value = code;
+  els.joinRoomForm.hidden = false;
+}
+
+async function restoreFriendSession(attempt = 0) {
+  if (friendsState.roomCode || friendsState.demo) return;
+  const roomCode = cleanRoomCode(localStorage.getItem(friendStorageKeys.roomCode) || "");
+  const playerId = localStorage.getItem(friendStorageKeys.playerId) || "";
+  if (!roomCode || !playerId || roomCode === demoRoomCode) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const requestedCode = cleanRoomCode(params.get("kode") || params.get("code") || "");
+  if (requestedCode && requestedCode !== roomCode) return;
+
+  const client = getClient();
+  if (!client) {
+    if (attempt < 6) window.setTimeout(() => restoreFriendSession(attempt + 1), 350);
+    return;
+  }
+
+  try {
+    const [room, players] = await Promise.all([
+      fetchRoom(client, roomCode),
+      fetchPlayers(client, roomCode)
+    ]);
+    const savedPlayer = players.find((player) => player.id === playerId);
+    if (!room || !savedPlayer) {
+      clearFriendSession();
+      return;
+    }
+    enterRoom(roomCode, playerId, room.host_player_id === playerId);
+    showFriendToast("Du er tilbage i din turnering.");
+  } catch (error) {
+    if (attempt < 2) {
+      window.setTimeout(() => restoreFriendSession(attempt + 1), 500);
+      return;
+    }
+    clearFriendSession();
+  }
 }
 
 function setStatus(message) {
