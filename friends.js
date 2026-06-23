@@ -1589,7 +1589,7 @@ async function copyRoomCode() {
 }
 
 function friendInviteLink(code) {
-  const url = new URL("friends.html", window.location.href);
+  const url = new URL("/friends.html", window.location.origin);
   url.search = "";
   url.hash = "";
   url.searchParams.set("kode", code);

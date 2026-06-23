@@ -1,6 +1,10 @@
 {
   "cleanUrls": true,
   "trailingSlash": true,
+  "rewrites": [
+    { "source": "/friends", "destination": "/friends.html" },
+    { "source": "/friends/", "destination": "/friends.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
