@@ -748,6 +748,7 @@ function renderTournament() {
       <div class="friend-share-actions">
         <button class="primary-button" id="shareFriendStandingsButton" type="button">Del slutstilling</button>
         <button class="secondary-button" id="playFriendsAgainButton" type="button">Spil igen</button>
+        <button class="secondary-button" id="finishFriendTournamentButton" type="button">Afslut turnering</button>
       </div>
     ` : ""}
     <div class="friends-results friend-match-list">
@@ -759,8 +760,10 @@ function renderTournament() {
   attachFriendLineupButtons(teams);
   els.resultPanel.querySelector("#shareFriendStandingsButton")?.addEventListener("click", () => shareFriendStandings(standings, tournament.matches));
   els.resultPanel.querySelector("#playFriendsAgainButton")?.addEventListener("click", () => {
-    clearFriendSession();
-    window.location.href = "/friends.html";
+    resetFriendBrowserToHome();
+  });
+  els.resultPanel.querySelector("#finishFriendTournamentButton")?.addEventListener("click", () => {
+    resetFriendBrowserToHome();
   });
   runTournamentAutoReveal();
 }
@@ -779,13 +782,19 @@ function renderTournamentReady(teams) {
         </article>
       `).join("")}
     </div>
-    <button class="primary-button" id="startFriendTournamentButton" type="button">Start turnering</button>
+    <div class="friend-share-actions">
+      <button class="primary-button" id="startFriendTournamentButton" type="button">Start turnering</button>
+      <button class="secondary-button" id="finishFriendTournamentButton" type="button">Afslut turnering</button>
+    </div>
   `;
   attachFriendLineupButtons(teams);
   els.resultPanel.querySelector("#startFriendTournamentButton")?.addEventListener("click", () => {
     friendsState.tournament.started = true;
     friendsState.tournament.revealed = 0;
     renderTournament();
+  });
+  els.resultPanel.querySelector("#finishFriendTournamentButton")?.addEventListener("click", () => {
+    resetFriendBrowserToHome();
   });
 }
 
@@ -1575,14 +1584,16 @@ function requireClient() {
 
 async function copyRoomCode() {
   const link = friendInviteLink(friendsState.roomCode);
-  const code = friendsState.roomCode;
-  const text = `Spil Start11 med venner:\n${link}\n\nTurneringskode: ${code}`;
-  const copied = await copyTextToClipboard(text);
-  showFriendToast(copied ? "Invitationen er kopieret." : "Kunne ikke kopiere invitationen.");
+  const copied = await copyTextToClipboard(link);
+  showFriendToast(copied ? "Linket er kopieret." : "Kunne ikke kopiere linket.");
 }
 
 function friendInviteLink(code) {
-  return `${window.location.origin}/friends.html?kode=${encodeURIComponent(code)}`;
+  const url = new URL("friends.html", window.location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("kode", code);
+  return url.toString();
 }
 
 async function copyTextToClipboard(text) {
@@ -1624,6 +1635,15 @@ function clearFriendSession() {
   localStorage.removeItem(friendStorageKeys.playerId);
   localStorage.removeItem(friendStorageKeys.roomCode);
   localStorage.removeItem(friendStorageKeys.isHost);
+}
+
+function resetFriendBrowserToHome() {
+  clearFriendSession();
+  if (pollTimer) {
+    window.clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  window.location.href = "/friends.html";
 }
 
 function leaveFriendGame() {
