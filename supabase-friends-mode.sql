@@ -15,7 +15,7 @@ create table if not exists public.startellever_friend_players (
   room_code text not null references public.startellever_friend_rooms(code) on delete cascade,
   team_name text not null check (char_length(team_name) between 1 and 18),
   formation text not null check (formation in ('4-3-3', '4-2-3-1', '3-5-2', '3-4-3', '4-4-2')),
-  order_index integer not null check (order_index between 0 and 3),
+  order_index integer not null check (order_index between 0 and 7),
   lineup jsonb not null,
   created_at timestamptz not null default now(),
   unique (room_code, order_index)
@@ -38,6 +38,25 @@ create table if not exists public.startellever_friend_picks (
   unique (room_code, player_key),
   unique (room_code, round_no, pick_index)
 );
+
+do $$
+declare
+  constraint_name text;
+begin
+  select conname into constraint_name
+  from pg_constraint
+  where conrelid = 'public.startellever_friend_players'::regclass
+    and contype = 'c'
+    and pg_get_constraintdef(oid) like '%order_index%';
+
+  if constraint_name is not null then
+    execute format('alter table public.startellever_friend_players drop constraint %I', constraint_name);
+  end if;
+
+  alter table public.startellever_friend_players
+    add constraint startellever_friend_players_order_index_check
+    check (order_index between 0 and 7);
+end $$;
 
 alter table public.startellever_friend_rooms enable row level security;
 alter table public.startellever_friend_players enable row level security;

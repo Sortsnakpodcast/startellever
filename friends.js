@@ -34,17 +34,16 @@ const friendStorageKeys = {
   roomCode: "startellever_friend_room_code",
   isHost: "startellever_friend_is_host"
 };
-const maxFriendsPlayers = 4;
+const maxFriendsPlayers = 8;
 const draftRounds = 11;
 const defaultFriendFormation = "4-3-3";
 const demoRoomCode = "DEMO1";
-const maxSameNamePerFriendRound = 2;
 const demoOpponents = [
   ["Frida", "4-3-3"],
   ["Bo", "3-5-2"],
   ["Hedens Helte", "4-4-2"]
 ];
-const friendMatchRevealDelay = 1150;
+const friendMatchRevealDelay = 2300;
 const friendRoleNames = {
   GK: "målmand",
   RB: "højre back",
@@ -89,6 +88,7 @@ const els = {
   roomPanel: document.querySelector("#roomPanel"),
   roomCodeText: document.querySelector("#roomCodeText"),
   copyRoomCodeButton: document.querySelector("#copyRoomCodeButton"),
+  leaveRoomButton: document.querySelector("#leaveFriendRoomButton"),
   roomStatusText: document.querySelector("#roomStatusText"),
   roomPlayers: document.querySelector("#roomPlayers"),
   addDemoPlayerButton: document.querySelector("#addDemoPlayerButton"),
@@ -98,6 +98,7 @@ const els = {
   formationText: document.querySelector("#friendsFormationText"),
   seasonTitle: document.querySelector("#friendsSeasonTitle"),
   roundText: document.querySelector("#friendsRoundText"),
+  leaveDraftButton: document.querySelector("#leaveFriendDraftButton"),
   turnBanner: document.querySelector("#turnBanner"),
   order: document.querySelector("#friendsOrder"),
   board: document.querySelector("#friendsBoard"),
@@ -116,6 +117,8 @@ function initFriends() {
   els.createRoomForm.addEventListener("submit", createRoom);
   els.joinRoomForm.addEventListener("submit", joinRoom);
   els.copyRoomCodeButton.addEventListener("click", copyRoomCode);
+  els.leaveRoomButton.addEventListener("click", leaveFriendGame);
+  els.leaveDraftButton.addEventListener("click", leaveFriendGame);
   els.addDemoPlayerButton.addEventListener("click", addDemoPlayer);
   els.startDraftButton.addEventListener("click", startDraft);
   hydrateFriendInviteCode();
@@ -254,6 +257,7 @@ function renderRoom() {
 async function startDraft() {
   const formation = randomFriendFormation();
   const playerOrder = shuffledPlayerOrder(friendsState.players);
+  const draftOrders = createFriendDraftOrders(friendsState.players, playerOrder);
   const openingRole = roleForFriendRound(formation, 1);
   if (friendsState.demo) {
     friendsState.players = applyFriendDraftOrder(
@@ -266,7 +270,7 @@ async function startDraft() {
       current_round: 1,
       current_pick_index: 0,
       current_season: openingRole,
-      season_draw_counts: { formation }
+      season_draw_counts: { formation, draftOrders }
     };
     friendsState.lastSeenRound = 1;
     showFriendDraw("Formation trukket", formation, "Valgrækkefølgen er også trukket.");
@@ -285,7 +289,7 @@ async function startDraft() {
     current_round: 1,
     current_pick_index: 0,
     current_season: openingRole,
-    season_draw_counts: { formation }
+    season_draw_counts: { formation, draftOrders }
   }).eq("code", friendsState.roomCode).eq("status", "lobby"));
   await Promise.all(resetPlayers.map((player) =>
     updateOrThrow(client.from(playersTable).update({
@@ -304,7 +308,7 @@ function renderDraft() {
   const room = friendsState.room;
   const role = room.current_season || currentFriendRole();
   const roundIndex = Number(room.current_round || 1) - 1;
-  const order = snakeOrder(friendsState.players, roundIndex);
+  const order = draftOrderForRound(friendsState.players, roundIndex);
   const current = order[room.current_pick_index] || order[0];
   const me = friendsState.players.find((player) => player.id === friendsState.playerId);
   const isMyTurn = current?.id === friendsState.playerId;
@@ -405,25 +409,25 @@ function renderPositionPlayers(role, me, isMyTurn) {
 
   const options = friendsPlayers
     .map((player) => {
+      const versionAllowed = isFriendNameVersionAllowed(player);
       const canUseSlot = currentSlot && (
         canPlayFriendRole(player, role, formation) || (useEmergencySlots && canPlayEmergencyRole(player, role))
       );
       const availableSlots = canUseSlot ? [currentSlot] : [];
       const alreadyTaken = takenVersionKeys.has(playerVersionKey(player));
       const alreadyOnOwnTeam = myPlayerNameKeys.has(playerNameKey(player));
-      const roundNameLimitReached = isFriendRoundNameLimitReached(player);
-      const canPick = isMyTurn && !alreadyTaken && !alreadyOnOwnTeam && !roundNameLimitReached && availableSlots.length > 0;
-      return { player, availableSlots, alreadyTaken, alreadyOnOwnTeam, roundNameLimitReached, canPick };
+      const gameNameLimitReached = isFriendGameNameLimitReached(player);
+      const canPick = isMyTurn && versionAllowed && !alreadyTaken && !alreadyOnOwnTeam && !gameNameLimitReached && availableSlots.length > 0;
+      return { player, availableSlots, versionAllowed, alreadyTaken, alreadyOnOwnTeam, gameNameLimitReached, canPick };
     })
-    .filter((item) => item.availableSlots.length)
+    .filter((item) => item.versionAllowed && item.availableSlots.length)
     .sort((a, b) => Number(b.player.score || 0) - Number(a.player.score || 0))
-    .filter(limitFriendRoundNamePool())
     .sort((a, b) => Number(b.player.score || 0) - Number(a.player.score || 0));
 
   els.playerList.innerHTML = options.map((item) => {
     const isPending = friendsState.pendingPick?.playerId === item.player.id;
-    const availableRoles = item.alreadyTaken || item.alreadyOnOwnTeam || item.roundNameLimitReached ? [] : uniqueSlotsForButtons(item.availableSlots).map((slot) => slot.role);
-    const status = item.alreadyTaken ? "Taget" : item.alreadyOnOwnTeam ? "Allerede på dit hold" : item.roundNameLimitReached ? "Maks. i runden" : "";
+    const availableRoles = item.alreadyTaken || item.alreadyOnOwnTeam || item.gameNameLimitReached ? [] : uniqueSlotsForButtons(item.availableSlots).map((slot) => slot.role);
+    const status = item.alreadyTaken ? "Taget" : item.alreadyOnOwnTeam ? "Allerede på dit hold" : item.gameNameLimitReached ? "Maks. i spillet" : "";
     const slotButtons = item.canPick
       ? `<div class="friend-slot-buttons">
           <button type="button" data-player="${item.player.id}" data-slot="${currentSlot.id}">Vælg</button>
@@ -502,8 +506,9 @@ function validateFriendPick(playerId, slotId) {
   if (slot.id !== currentFriendSlot(me)?.id || slot.role !== role || (!canPlayFriendRole(player, role, formation) && !useEmergencySlot)) return null;
   const key = playerVersionKey(player);
   const nameKey = playerNameKey(player);
+  if (!isFriendNameVersionAllowed(player)) return null;
   if (friendsState.picks.some((pick) => pickVersionKey(pick) === key)) return null;
-  if (isFriendRoundNameLimitReached(player)) return null;
+  if (isFriendGameNameLimitReached(player)) return null;
   if ((me.lineup || []).some((item) => item.player && playerNameKey(item.player) === nameKey)) return null;
 
   const nextLineup = me.lineup.map((item) => item.id === slot.id
@@ -603,7 +608,7 @@ async function runDemoBotsUntilUserTurn() {
 
 function currentDemoPlayer() {
   const roundIndex = Number(friendsState.room.current_round || 1) - 1;
-  const order = snakeOrder(friendsState.players, roundIndex);
+  const order = draftOrderForRound(friendsState.players, roundIndex);
   return order[friendsState.room.current_pick_index] || order[0];
 }
 
@@ -627,8 +632,7 @@ function demoBotPick(friendPlayer) {
     }))
     .filter((item) => item.slots.length)
     .sort((a, b) => Number(b.player.score || 0) - Number(a.player.score || 0))
-    .filter(limitFriendRoundNamePool())
-    .filter((item) => !takenVersionKeys.has(item.key) && !ownNameKeys.has(item.nameKey) && !isFriendRoundNameLimitReached(item.player))
+    .filter((item) => isFriendNameVersionAllowed(item.player) && !takenVersionKeys.has(item.key) && !ownNameKeys.has(item.nameKey) && !isFriendGameNameLimitReached(item.player))
     .sort((a, b) => Number(b.player.score || 0) - Number(a.player.score || 0))[0];
   if (!option) return;
   friendPlayer.lineup = friendPlayer.lineup.map((item) => item.id === slot.id
@@ -643,7 +647,7 @@ function demoBotPick(friendPlayer) {
 function advanceDemoTurn() {
   const room = friendsState.room;
   const roundIndex = Number(room.current_round || 1) - 1;
-  const order = snakeOrder(friendsState.players, roundIndex);
+  const order = draftOrderForRound(friendsState.players, roundIndex);
   const nextPick = Number(room.current_pick_index || 0) + 1;
   if (nextPick < order.length) {
     friendsState.room = { ...room, current_pick_index: nextPick };
@@ -686,7 +690,7 @@ function createPickRecord(friendPlayer, player, slot, room) {
 async function advanceTurn(client, room) {
   const players = friendsState.players;
   const roundIndex = Number(room.current_round || 1) - 1;
-  const order = snakeOrder(players, roundIndex);
+  const order = draftOrderForRound(players, roundIndex);
   const nextPick = Number(room.current_pick_index || 0) + 1;
   if (nextPick < order.length) {
     await updateOrThrow(client.from(roomsTable).update({ current_pick_index: nextPick }).eq("code", friendsState.roomCode));
@@ -1121,23 +1125,47 @@ function renderFriendModalPitch(team) {
 function simulateFriendMatch(home, away) {
   const homePower = teamPower(home);
   const awayPower = teamPower(away);
-  const homeBase = 1.15 + ((homePower.attack - awayPower.defense) * 0.035) + ((homePower.midfield - awayPower.midfield) * 0.014);
-  const awayBase = 1.00 + ((awayPower.attack - homePower.defense) * 0.035) + ((awayPower.midfield - homePower.midfield) * 0.014);
+  const openMatch = Math.random() < 0.22;
+  const homeXg = friendExpectedGoals(homePower.attack, awayPower.defense, homePower.midfield, awayPower.midfield, 0.08, openMatch);
+  const awayXg = friendExpectedGoals(awayPower.attack, homePower.defense, awayPower.midfield, homePower.midfield, 0, openMatch);
+  let homeGoals = sampleFriendGoals(homeXg);
+  let awayGoals = sampleFriendGoals(awayXg);
+  ({ homeGoals, awayGoals } = addFriendBreakawayGoal(homePower, awayPower, homeGoals, awayGoals, openMatch));
   return {
-    homeGoals: boundedGoals(homeBase),
-    awayGoals: boundedGoals(awayBase)
+    homeGoals,
+    awayGoals
   };
 }
 
-function boundedGoals(expected) {
-  const value = Math.max(0.15, Math.min(3.9, expected));
+function friendExpectedGoals(attack, defense, midfield, opponentMidfield, homeBonus = 0, openMatch = false) {
+  const base = 1.12 + homeBonus;
+  const attackEdge = (attack - defense) * 0.045;
+  const midfieldEdge = (midfield - opponentMidfield) * 0.014;
+  const openBonus = openMatch ? 0.30 : 0;
+  return clampNumber(base + attackEdge + midfieldEdge + openBonus + randomBetween(-0.20, 0.20), 0.25, 3.35);
+}
+
+function addFriendBreakawayGoal(home, away, homeGoals, awayGoals, openMatch) {
+  if (!openMatch || homeGoals === awayGoals) return { homeGoals, awayGoals };
+  const homeEdge = (home.attack + home.midfield) - (away.defense + away.midfield);
+  const awayEdge = (away.attack + away.midfield) - (home.defense + home.midfield);
+  if (homeGoals > awayGoals && homeEdge > 5 && Math.random() < 0.24) {
+    return { homeGoals: Math.min(5, homeGoals + 1), awayGoals };
+  }
+  if (awayGoals > homeGoals && awayEdge > 5 && Math.random() < 0.24) {
+    return { homeGoals, awayGoals: Math.min(5, awayGoals + 1) };
+  }
+  return { homeGoals, awayGoals };
+}
+
+function sampleFriendGoals(expected) {
   let goals = 0;
-  if (Math.random() < value / 4.2) goals += 1;
-  if (Math.random() < value / 5.2) goals += 1;
-  if (Math.random() < value / 7.0) goals += 1;
-  if (Math.random() < value / 10.5) goals += 1;
-  if (Math.random() < value / 17.0) goals += 1;
-  return Math.min(5, goals);
+  let chance = expected;
+  while (goals < 5 && Math.random() < chance / (goals + 1.25)) {
+    goals += 1;
+    chance *= 0.68;
+  }
+  return goals;
 }
 
 function applyResult(home, away, result) {
@@ -1187,9 +1215,66 @@ function average(values) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 75;
 }
 
+function draftOrderForRound(players, roundIndex) {
+  const storedOrder = friendsState.room?.season_draw_counts?.draftOrders?.[roundIndex];
+  if (Array.isArray(storedOrder) && storedOrder.length) {
+    const byId = new Map(players.map((player) => [player.id, player]));
+    const ordered = storedOrder.map((id) => byId.get(id)).filter(Boolean);
+    const missing = players.filter((player) => !storedOrder.includes(player.id));
+    if (ordered.length) return [...ordered, ...missing];
+  }
+  return snakeOrder(players, roundIndex);
+}
+
 function snakeOrder(players, roundIndex) {
   const sorted = [...players].sort((a, b) => a.order_index - b.order_index);
   return roundIndex % 2 === 0 ? sorted : sorted.reverse();
+}
+
+function createFriendDraftOrders(players, openingOrder = shuffledPlayerOrder(players)) {
+  const ids = openingOrder.filter((id) => players.some((player) => player.id === id));
+  const playerCount = ids.length;
+  if (playerCount < 2) return Array.from({ length: draftRounds }, () => ids);
+  const firstPickCounts = Object.fromEntries(ids.map((id) => [id, 0]));
+  const firstPickTarget = createFirstPickTargets(ids);
+  const firstPicks = [];
+  for (let roundIndex = 0; roundIndex < draftRounds; roundIndex += 1) {
+    const previousFirst = firstPicks[roundIndex - 1];
+    const candidates = ids
+      .filter((id) => id !== previousFirst && firstPickCounts[id] < firstPickTarget[id])
+      .sort((a, b) =>
+        (firstPickTarget[b] - firstPickCounts[b]) - (firstPickTarget[a] - firstPickCounts[a]) ||
+        Math.random() - 0.5
+      );
+    const first = candidates[0] || ids.find((id) => id !== previousFirst) || ids[0];
+    firstPicks.push(first);
+    firstPickCounts[first] += 1;
+  }
+  const lowFirstPickers = ids
+    .filter((id) => firstPickTarget[id] === Math.min(...Object.values(firstPickTarget)));
+  return firstPicks.map((first, roundIndex) => {
+    const previousFirst = firstPicks[roundIndex - 1];
+    const rest = ids.filter((id) => id !== first && id !== previousFirst);
+    const preferred = lowFirstPickers
+      .filter((id) => id !== first && rest.includes(id))
+      .sort((a, b) => firstPickCounts[a] - firstPickCounts[b]);
+    const middle = rest.filter((id) => !preferred.includes(id));
+    shuffleInPlace(middle);
+    const orderedRest = [...preferred, ...middle];
+    if (previousFirst && previousFirst !== first) orderedRest.push(previousFirst);
+    return [first, ...orderedRest.filter((id, index, array) => array.indexOf(id) === index)];
+  });
+}
+
+function createFirstPickTargets(ids) {
+  const base = Math.floor(draftRounds / ids.length);
+  const extra = draftRounds % ids.length;
+  const shuffled = [...ids];
+  shuffleInPlace(shuffled);
+  return Object.fromEntries(ids.map((id) => [
+    id,
+    base + (shuffled.slice(0, extra).includes(id) ? 1 : 0)
+  ]));
 }
 
 function randomFriendFormation() {
@@ -1198,11 +1283,23 @@ function randomFriendFormation() {
 
 function shuffledPlayerOrder(players) {
   const ids = players.map((player) => player.id);
-  for (let index = ids.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [ids[index], ids[swapIndex]] = [ids[swapIndex], ids[index]];
-  }
+  shuffleInPlace(ids);
   return ids;
+}
+
+function shuffleInPlace(items) {
+  for (let index = items.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
+  }
+}
+
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function clampNumber(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function applyFriendDraftOrder(players, playerOrder) {
@@ -1306,18 +1403,19 @@ function hasNormalFriendChoice(friendPlayer, role, formation = sharedFriendForma
     .map((lineupSlot) => playerNameKey(lineupSlot.player)));
   return friendsPlayers.some((player) =>
     canPlayFriendRole(player, role, formation) &&
+    isFriendNameVersionAllowed(player) &&
     !takenVersionKeys.has(playerVersionKey(player)) &&
     !ownNameKeys.has(playerNameKey(player)) &&
-    !isFriendRoundNameLimitReached(player)
+    !isFriendGameNameLimitReached(player)
   );
 }
 
 function canPlayRole(player, role) {
-  return (player.positions || []).includes(role);
+  return friendPlayerPositions(player).includes(role);
 }
 
 function canPlayFriendRole(player, role, formation = sharedFriendFormation()) {
-  const positions = player.positions || [];
+  const positions = friendPlayerPositions(player);
   if (positions.includes(role)) return true;
   if (["DM", "CM", "AM"].includes(role)) {
     return positions.some((position) => ["DM", "CM", "AM"].includes(position));
@@ -1333,8 +1431,26 @@ function canPlayFriendRole(player, role, formation = sharedFriendFormation()) {
 
 function canPlayEmergencyRole(player, role) {
   if (role === "GK") return false;
-  const chain = friendRoleChainByRole[role];
-  return (player.positions || []).some((position) => friendRoleChainByRole[position] === chain);
+  const emergencyRoles = {
+    LM: ["LB", "LW"],
+    RM: ["RB", "RW"],
+    ST: ["LW", "RW"],
+    CM: ["LM", "RM", "ML", "MR"],
+    DM: ["CM", "LM", "RM", "ML", "MR"],
+    AM: ["CM", "LW", "RW"],
+    LB: ["CB"],
+    RB: ["CB"],
+    CB: ["LB", "RB"],
+    LW: ["ST", "LM", "ML"],
+    RW: ["ST", "RM", "MR"]
+  };
+  const allowed = emergencyRoles[role] || [];
+  return friendPlayerPositions(player).some((position) => allowed.includes(position));
+}
+
+function friendPlayerPositions(player) {
+  const aliases = { ML: "LM", MR: "RM", HB: "RB", VB: "LB" };
+  return (player.positions || []).map((position) => aliases[position] || position);
 }
 
 function lineupCount(lineup) {
@@ -1357,25 +1473,38 @@ function playerNameKey(player) {
   return playerKey(player);
 }
 
-function isFriendRoundNameLimitReached(player) {
-  const round = Number(friendsState.room?.current_round || 1);
-  const nameKey = playerNameKey(player);
-  const count = friendsState.picks.filter((pick) =>
-    Number(pick.round_no || 0) === round &&
-    playerNameKey(pick) === nameKey
-  ).length;
-  return count >= maxSameNamePerFriendRound;
+function friendNameVersionCap() {
+  const playerCount = Math.max(2, friendsState.players.length || 2);
+  if (playerCount <= 3) return 1;
+  if (playerCount <= 6) return 2;
+  return 3;
 }
 
-function limitFriendRoundNamePool() {
-  const counts = new Map();
-  return (item) => {
-    const key = playerNameKey(item.player);
-    const count = counts.get(key) || 0;
-    if (count >= maxSameNamePerFriendRound) return false;
-    counts.set(key, count + 1);
-    return true;
-  };
+function isFriendGameNameLimitReached(player) {
+  const nameKey = playerNameKey(player);
+  const count = friendsState.picks.filter((pick) => playerNameKey(pick) === nameKey).length;
+  return count >= friendNameVersionCap();
+}
+
+function isFriendNameVersionAllowed(player) {
+  const nameKey = playerNameKey(player);
+  const cap = friendNameVersionCap();
+  const allowedKeys = friendsPlayers
+    .filter((item) => playerNameKey(item) === nameKey)
+    .sort((a, b) => stableFriendVersionRank(a) - stableFriendVersionRank(b))
+    .slice(0, cap)
+    .map(playerVersionKey);
+  return allowedKeys.includes(playerVersionKey(player));
+}
+
+function stableFriendVersionRank(player) {
+  const seed = `${friendsState.roomCode || "demo"}|${playerNameKey(player)}|${playerVersionKey(player)}`;
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
 }
 
 function playerVersionKey(player) {
@@ -1444,16 +1573,45 @@ function requireClient() {
   return client;
 }
 
-function copyRoomCode() {
+async function copyRoomCode() {
   const link = friendInviteLink(friendsState.roomCode);
   const code = friendsState.roomCode;
-  const text = `Spil Start11 med venner her: ${link}\nTurneringskode: ${code}`;
-  navigator.clipboard?.writeText(text);
-  showFriendToast("Invitationen er kopieret.");
+  const text = `Spil Start11 med venner:\n${link}\n\nTurneringskode: ${code}`;
+  const copied = await copyTextToClipboard(text);
+  showFriendToast(copied ? "Invitationen er kopieret." : "Kunne ikke kopiere invitationen.");
 }
 
 function friendInviteLink(code) {
   return `${window.location.origin}/friends.html?kode=${encodeURIComponent(code)}`;
+}
+
+async function copyTextToClipboard(text) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (error) {
+    // Fall back below for browsers that expose Clipboard API but reject it.
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch (error) {
+    copied = false;
+  }
+  textarea.remove();
+  return copied;
 }
 
 function persistFriendSession(roomCode, playerId, isHost) {
@@ -1466,6 +1624,30 @@ function clearFriendSession() {
   localStorage.removeItem(friendStorageKeys.playerId);
   localStorage.removeItem(friendStorageKeys.roomCode);
   localStorage.removeItem(friendStorageKeys.isHost);
+}
+
+function leaveFriendGame() {
+  const shouldLeave = window.confirm("Vil du forlade spillet i denne browser?");
+  if (!shouldLeave) return;
+  clearFriendSession();
+  if (pollTimer) {
+    window.clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  friendsState = {
+    roomCode: "",
+    playerId: "",
+    isHost: false,
+    demo: false,
+    room: null,
+    players: [],
+    picks: [],
+    tournament: null,
+    pendingPick: null,
+    lastSeenPickCount: 0,
+    lastSeenRound: null
+  };
+  window.location.href = "/friends.html";
 }
 
 function hydrateFriendInviteCode() {

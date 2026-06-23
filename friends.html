@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sort Snak Start11 med venner</title>
-    <link rel="stylesheet" href="/styles.css?v=20260622-start11-fallback">
+    <link rel="stylesheet" href="/styles.css?v=20260623-friend-engine-order">
   </head>
   <body>
     <main class="friends-app">
@@ -60,7 +60,10 @@
               <p class="eyebrow">Turneringskode</p>
               <h2 id="roomCodeText">-----</h2>
             </div>
-            <button class="secondary-button" id="copyRoomCodeButton" type="button">Kopiér invitation</button>
+            <div class="friend-top-actions">
+              <button class="secondary-button" id="copyRoomCodeButton" type="button">Kopiér invitation</button>
+              <button class="secondary-button subtle-button" id="leaveFriendRoomButton" type="button">Forlad spil</button>
+            </div>
           </div>
           <p id="roomStatusText">Del koden med de andre. Når mindst to hold er med, kan værten starte.</p>
           <div class="friends-list" id="roomPlayers"></div>
@@ -77,7 +80,10 @@
               <p class="eyebrow" id="friendsFormationText">Formation</p>
               <h2 id="friendsSeasonTitle">--/--</h2>
             </div>
-            <div class="friends-round-pill" id="friendsRoundText">Runde 1/11</div>
+            <div class="friend-top-actions">
+              <div class="friends-round-pill" id="friendsRoundText">Runde 1/11</div>
+              <button class="secondary-button subtle-button" id="leaveFriendDraftButton" type="button">Forlad spil</button>
+            </div>
           </div>
           <div class="turn-banner" id="turnBanner"></div>
           <div class="friends-order" id="friendsOrder"></div>
@@ -90,8 +96,8 @@
     </main>
 
     <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/supabase-config.js?v=20260622-start11-fallback"></script>
-    <script src="/players-data.js?v=20260622-start11-fallback"></script>
-    <script src="/friends.js?v=20260622-start11-fallback"></script>
+    <script src="/supabase-config.js?v=20260623-friend-engine-order"></script>
+    <script src="/players-data.js?v=20260623-friend-engine-order"></script>
+    <script src="/friends.js?v=20260623-friend-engine-order"></script>
   </body>
 </html>

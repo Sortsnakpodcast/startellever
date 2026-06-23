@@ -1323,6 +1323,20 @@ button:disabled {
   gap: 14px;
 }
 
+.friend-top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.subtle-button {
+  min-height: 42px;
+  padding: 0 14px;
+  color: var(--muted);
+}
+
 .room-topline h2 {
   font-size: 48px;
 }
